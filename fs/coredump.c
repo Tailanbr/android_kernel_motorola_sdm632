@@ -825,23 +825,17 @@ fail:
  */
 int dump_init(struct coredump_params *cprm)
 {
-	if (dump_compressed(cprm))
-		return gz_init(cprm);
-
 	return 1;
 }
 EXPORT_SYMBOL(dump_init);
 
 int dump_finish(struct coredump_params *cprm)
 {
-	if (dump_compressed(cprm))
-		return gz_finish(cprm);
-
 	return 1;
 }
 EXPORT_SYMBOL(dump_finish);
 
-int __dump_emit(struct coredump_params *cprm, const void *addr, int nr)
+int dump_emit(struct coredump_params *cprm, const void *addr, int nr)
 {
 	struct file *file = cprm->file;
 	loff_t pos = file->f_pos;
