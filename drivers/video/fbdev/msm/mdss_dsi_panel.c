@@ -24,7 +24,6 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
-#include <linux/panel_notifier.h>
 
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
@@ -3463,7 +3462,6 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	int ret;
 	struct dcs_cmd_req cmdreq;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
-	struct mdss_panel_info *pinfo;
 	struct dsi_cmd_desc reg_read_cmd = {
 		.dchdr.dtype = DTYPE_DCS_READ,
 		.dchdr.last = 1,
@@ -3488,21 +3486,11 @@ static int mdss_dsi_panel_reg_read(struct mdss_panel_data *pdata,
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 	pr_debug("%s: Reading %zu bytes from 0x%02x\n", __func__, size, reg);
 
-	if (ctrl) {
-		pinfo = &ctrl->panel_data.panel_info;
-		if (pinfo->no_panel_read_support) {
-			pr_warn("%s: This panel doesn't support read data\n",
-							__func__);
-			return -EINVAL;
-		}
-	} else
-		return -EINVAL;
-
 	memset(&cmdreq, 0, sizeof(cmdreq));
 	cmdreq.cmds = &reg_read_cmd;
 	cmdreq.cmds_cnt = 1;
 	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
-	if (!pinfo->panel_reg_read_lp_enable && hs_mode)
+	if (hs_mode)
 		cmdreq.flags |= CMD_REQ_HS_MODE;
 	cmdreq.rlen = size;
 	cmdreq.cb = NULL; /* call back */
