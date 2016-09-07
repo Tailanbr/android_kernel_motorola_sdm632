@@ -704,6 +704,7 @@ int mdss_dsi_check_panel_status(struct mdss_dsi_ctrl_pdata *ctrl, void *arg);
 void mdss_dsi_debug_bus_init(struct mdss_dsi_data *sdata);
 int mdss_dsi_panel_ioctl_handler(struct mdss_panel_data *pdata,
 					u32 cmd, void *arg);
+int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata);
 
 static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 {
