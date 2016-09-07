@@ -2534,8 +2534,6 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 {
 	struct mdss_panel_info *pinfo;
 	struct mdss_panel_config *pcfg;
-	const char *data;
-	int rc;
 
 	if (!np || !ctrl) {
 		pr_err("%s: Invalid arguments\n", __func__);
