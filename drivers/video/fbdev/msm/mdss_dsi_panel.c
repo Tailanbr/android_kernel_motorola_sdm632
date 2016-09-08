@@ -1226,20 +1226,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	panel_notify(PANEL_EVENT_DISPLAY_ON, pinfo);
 
 end:
-	if (dropbox_issue != NULL) {
-		dropbox_count++;
-		MDSS_XLOG_TOUT_HANDLER_MMI("mdp", "dsi0_ctrl", "dsi0_phy",
-			"dsi1_ctrl", "dsi1_phy");
-		mdss_dropbox_report_event(dropbox_issue, dropbox_count);
-	} else
-		dropbox_count = 0;
-
-	if (!ctrl->ndx)
-		pr_info("%s[%d]-. Pwr_mode(0x0A) = 0x%x\n", __func__,
-			ctrl->ndx, pwr_mode);
-	else
-		pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
-
+	pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
