@@ -1153,9 +1153,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct dsi_panel_cmds *on_cmds;
 	int ret = 0;
 	u8 pwr_mode = 0;
-	char *dropbox_issue = NULL;
-	static int dropbox_count;
-	static int panel_recovery_retry;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1178,8 +1175,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
-	panel_notify(PANEL_EVENT_PRE_DISPLAY_ON, pinfo);
-
 	on_cmds = &ctrl->on_cmds;
 
 	if ((pinfo->mipi.dms_mode == DYNAMIC_MODE_SWITCH_IMMEDIATE) &&
@@ -1200,33 +1195,18 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	/* Ensure low persistence mode is set as before */
 	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);
 
-	if (pinfo->no_panel_read_support == false &&
-		pinfo->no_panel_on_read_support == false) {
-		mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
-		if (pinfo->disp_on_check_val != pwr_mode) {
-			pr_err("%s: Display failure: read = 0x%x, expected = 0x%x\n",
+	mdss_dsi_get_pwr_mode(pdata, &pwr_mode, false);
+	if (pinfo->disp_on_check_val != pwr_mode)
+		pr_err("%s: Display failure: read = 0x%x, expected = 0x%x\n",
 				__func__, pwr_mode, pinfo->disp_on_check_val);
-			dropbox_issue = MDSS_DROPBOX_MSG_PWR_MODE_BLACK;
-
-			if (pdata->panel_info.panel_dead)
-				pr_err("%s: Panel recovery FAILED!!\n",
-								__func__);
-
-			pdata->panel_info.panel_dead = true;
-
-			if (panel_recovery_retry++ > 5) {
-				pr_err("%s: panel recovery failed for all retries",
-					__func__);
-				BUG();
-			}
-		} else
-			panel_recovery_retry = 0;
-	}
-
-	panel_notify(PANEL_EVENT_DISPLAY_ON, pinfo);
 
 end:
-	pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
+	if (!ctrl->ndx)
+		pr_info("%s[%d]-. Pwr_mode(0x0A) = 0x%x\n", __func__,
+			ctrl->ndx, pwr_mode);
+	else
+		pr_info("%s[%d]-.\n", __func__, ctrl->ndx);
+
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
@@ -2521,6 +2501,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 {
 	struct mdss_panel_info *pinfo;
 	struct mdss_panel_config *pcfg;
+	int rc;
 
 	if (!np || !ctrl) {
 		pr_err("%s: Invalid arguments\n", __func__);
@@ -2588,15 +2569,6 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 		else
 			pinfo->disp_on_check_val = 0x9c;
 	}
-
-	pinfo->no_panel_read_support = of_property_read_bool(np,
-					"qcom,mdss-dsi-no-panel-read-support");
-
-	pinfo->no_panel_on_read_support = of_property_read_bool(np,
-					"qcom,mdss-dsi-no-panel-on-read-support");
-
-	pinfo->panel_reply_long_response = of_property_read_bool(np,
-					"qcom,mdss-dsi-panel-reply-long-response");
 
 	if (ctrl->disp_en_gpio <= 0) {
 		ctrl->disp_en_gpio = of_get_named_gpio(
