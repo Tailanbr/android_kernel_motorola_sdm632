@@ -32,8 +32,6 @@
 #endif
 #include "mdss_debug.h"
 #include "mdss_fb.h"
-#include "mdss_dropbox.h"
-#include "mdss_debug.h"
 
 #define MDSS_PANEL_DEFAULT_VER 0xffffffffffffffff
 #define MDSS_PANEL_UNKNOWN_NAME "unknown"
@@ -786,6 +784,13 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 	u32 panel_ver, tmp;
 	struct mdss_panel_config *pconf = &ctrl_pdata->panel_config;
 
+	/*
+	 * Currently, the LK only detects the panel_name and panel_ver from
+	 * the primary display/master display only
+	 */
+	if (ctrl_pdata->panel_data.panel_info.pdest == DISPLAY_2)
+		return 0;
+
 	np = of_find_node_by_path("/chosen");
 	/* Disable ESD only if the prop "mmi,esd" exists and is equal to 0 */
 	if (!of_property_read_u32(np, "mmi,esd", &tmp) && tmp == 0) {
@@ -819,6 +824,11 @@ int mdss_panel_parse_panel_config_dt(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 		panel_ver & 0xff, (panel_ver & 0xff00) >> 8,
 		(panel_ver & 0xff0000) >> 16,
 		pconf->panel_ver);
+
+	ctrl_pdata->panel_data.panel_info.panel_ver = panel_ver;
+	strlcpy(ctrl_pdata->panel_data.panel_info.panel_family_name,
+		pconf->panel_name,
+		sizeof(ctrl_pdata->panel_data.panel_info.panel_family_name));
 
 	of_node_put(np);
 
@@ -2510,6 +2520,7 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 {
 	struct mdss_panel_info *pinfo;
 	struct mdss_panel_config *pcfg;
+	const char *data;
 	int rc;
 
 	if (!np || !ctrl) {
@@ -2603,16 +2614,6 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 			sizeof(pinfo->panel_supplier)) >=
 				sizeof(pinfo->panel_supplier)) {
 		pr_err("%s: Panel supplier name too large\n", __func__);
-	}
-
-	data = of_get_property(np, "qcom,mdss-dsi-panel-vendor-id", NULL);
-	if (!data)
-		memset(pinfo->panel_vendor_id, '\0',
-			sizeof(pinfo->panel_vendor_id));
-	else if (strlcpy(pinfo->panel_vendor_id, data,
-			sizeof(pinfo->panel_vendor_id)) >=
-				sizeof(pinfo->panel_vendor_id)) {
-		pr_err("%s: Panel vendor id too large\n", __func__);
 	}
 
 	return 0;
