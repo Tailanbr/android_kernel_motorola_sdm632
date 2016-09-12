@@ -16,8 +16,6 @@
 
 #define DROPBOX_DISPLAY_ISSUE "display_issue"
 
-DEFINE_RATELIMIT_STATE(mdss_dropbox_global_rl, 3600 * HZ, 1);
-
 void mdss_dropbox_report_event(char *msg, int count)
 {
 	char dropbox_entry[256];
@@ -29,13 +27,4 @@ void mdss_dropbox_report_event(char *msg, int count)
 		__func__, count, msg);
 	dropbox_queue_event_text(DROPBOX_DISPLAY_ISSUE,
 				dropbox_entry, strlen(dropbox_entry));
-}
-
-void mdss_dropbox_report_event_ratelimit(char *msg, int count,
-					struct ratelimit_state *rs)
-{
-	if (!__ratelimit(rs))
-		return;
-
-	mdss_dropbox_report_event(msg, count);
 }
