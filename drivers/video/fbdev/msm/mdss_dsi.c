@@ -187,17 +187,6 @@ static void mdss_dsi_pm_qos_update_request(int val)
 	pm_qos_update_request(&mdss_dsi_pm_qos_request, val);
 }
 
-static int mdss_dsi_hndl_enable_te(struct mdss_dsi_ctrl_pdata *ctrl,
-				int enable)
-{
-	if (enable)
-		mdss_dsi_set_tear_on(ctrl);
-	else
-		mdss_dsi_set_tear_off(ctrl);
-
-	return 0;
-}
-
 static struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl(u32 ctrl_id)
 {
 	if (ctrl_id >= DSI_CTRL_MAX || !mdss_dsi_res)
@@ -1614,23 +1603,7 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * data lanes for LP11 init
 	 */
 	if (mipi->lp11_init) {
-		if (mipi->lp11_lcdb_reset) {
-			ret = msm_mdss_enable_lcdb(
-				ctrl_pdata->panel_power_data.vreg_config,
-				ctrl_pdata->panel_power_data.num_vreg);
-		}
-		if (!pinfo->panel_reset_pull_high)
-			mdss_dsi_panel_reset(pdata, 1);
-
-		if (mipi->lp11_reset_lcdb)
-			ret = msm_mdss_enable_lcdb(
-				ctrl_pdata->panel_power_data.vreg_config,
-				ctrl_pdata->panel_power_data.num_vreg);
-		if (ret) {
-			pr_err("%s: failed to enable vregs for %s\n",
-				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
-			return ret;
-		}
+		mdss_dsi_panel_reset(pdata, 1);
 	}
 
 	if (mipi->init_delay)
