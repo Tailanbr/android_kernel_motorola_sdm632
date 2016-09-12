@@ -187,6 +187,17 @@ static void mdss_dsi_pm_qos_update_request(int val)
 	pm_qos_update_request(&mdss_dsi_pm_qos_request, val);
 }
 
+static int mdss_dsi_hndl_enable_te(struct mdss_dsi_ctrl_pdata *ctrl,
+				int enable)
+{
+	if (enable)
+		mdss_dsi_set_tear_on(ctrl);
+	else
+		mdss_dsi_set_tear_off(ctrl);
+
+	return 0;
+}
+
 static struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl(u32 ctrl_id)
 {
 	if (ctrl_id >= DSI_CTRL_MAX || !mdss_dsi_res)
