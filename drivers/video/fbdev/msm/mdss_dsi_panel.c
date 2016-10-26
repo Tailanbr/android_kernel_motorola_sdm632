@@ -24,6 +24,7 @@
 #include <linux/string.h>
 #include <linux/uaccess.h>
 #include <linux/msm_mdp.h>
+#include <linux/panel_notifier.h>
 
 #include "mdss_dsi.h"
 #include "mdss_debug.h"
@@ -1185,6 +1186,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		goto end;
 	}
 
+	panel_notify(PANEL_EVENT_PRE_DISPLAY_ON, pinfo);
+
 	on_cmds = &ctrl->on_cmds;
 
 	if ((pinfo->mipi.dms_mode == DYNAMIC_MODE_SWITCH_IMMEDIATE) &&
@@ -1226,6 +1229,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		} else
 			panel_recovery_retry = 0;
 	}
+
+	panel_notify(PANEL_EVENT_DISPLAY_ON, pinfo);
+
 end:
 	if (dropbox_issue != NULL) {
 		dropbox_count++;
