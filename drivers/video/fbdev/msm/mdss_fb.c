@@ -2429,6 +2429,8 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 	int ret;
 	struct mdss_panel_data *pdata;
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
+	ktime_t start, end;
+	s64 actual_time;
 	int panel_dead = mfd->panel_info->panel_dead;
 
 	ret = mdss_fb_pan_idle(mfd);
@@ -2464,6 +2466,14 @@ static int mdss_fb_blank(int blank_mode, struct fb_info *info)
 
 	ret = mdss_fb_blank_sub(blank_mode, info, mfd->op_enable);
 	MDSS_XLOG(blank_mode);
+
+	if (blank_mode == FB_BLANK_UNBLANK && !panel_dead &&
+		mfd->panel_info->panel_dead) {
+		pr_err("%s: Panel is dead, attempt recovery\n", __func__);
+		mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info, 1);
+		usleep_range(225 * 1000, 225 * 1000);
+		mdss_fb_blank_sub(FB_BLANK_UNBLANK, info, 1);
+	}
 
 	if (blank_mode == FB_BLANK_UNBLANK && !panel_dead &&
 		mfd->panel_info->panel_dead) {
