@@ -46,53 +46,8 @@ enum fps_resolution {
 #define SIM_SW_TE_PANEL	"sim-swte"
 #define SIM_HW_TE_PANEL	"sim-hwte"
 
-#define BRIGHTNESS_HBM_ON	0xFFFFFFFE
-#define BRIGHTNESS_HBM_OFF	(BRIGHTNESS_HBM_ON - 1)
-#define HBM_BRIGHTNESS(value) ((value) == HBM_ON_STATE ?\
-			BRIGHTNESS_HBM_ON : BRIGHTNESS_HBM_OFF)
-/* HBM implementation is different, depending on display and backlight hardware
- * design, which is classified into the following types:
- * HBM_TYPE_OLED: OLED panel, HBM is controlled by DSI register only, which
- *     is independent on brightness.
- * HBM_TYPE_LCD_DCS_WLED: LCD panel, HBM is controlled by DSI register, and
- *     brightness is decided by WLED IC on I2C/SPI bus.
- * HBM_TYPE_LCD_DCS_ONLY: LCD panel, brightness/HBM is controlled by DSI
- *     register only.
- * HBM_TYPE_LCD_WLED_ONLY: LCD panel, brightness/HBM is controlled by WLED
- *     IC only.
- *
- * Note: brightness must be at maximum while enabling HBM for all LCD panels
- */
-#define HBM_TYPE_OLED	0
-#define HBM_TYPE_LCD_DCS_WLED	1
-#define HBM_TYPE_LCD_DCS_ONLY	2
-#define HBM_TYPE_LCD_WLED_ONLY	3
-#define HBM_TYPE_LCD_DCS_GPIO	4
-
-enum hbm_state {
-	HBM_OFF_STATE = 0,
-	HBM_ON_STATE,
-	HBM_STATE_NUM
-};
-
-enum acl_state {
-	ACL_OFF_STATE = 0,
-	ACL_ON_STATE,
-	ACL_STATE_NUM
-};
-
-enum cabc_mode {
-	CABC_UI_MODE = 0,
-	CABC_MV_MODE,
-	CABC_DIS_MODE,
-	CABC_MODE_NUM
-};
-
 enum panel_param_id {
-	PARAM_HBM_ID = 0,
-	PARAM_ACL_ID,
-	PARAM_CABC_ID,
-	PARAM_ID_NUM
+	PARAM_ID_NUM = 0,
 };
 
 struct panel_param_val_map {
@@ -852,6 +807,8 @@ struct mdss_panel_info {
 
 	u32 disp_on_check_val;
 	bool no_panel_read_support;
+
+	struct panel_param *param[PARAM_ID_NUM];
 };
 
 struct mdss_panel_timing {
@@ -1336,14 +1293,4 @@ static inline bool mdss_panel_param_is_supported(struct mdss_panel_info *p,
 	return false;
 };
 
-static inline bool mdss_panel_param_is_hbm_on(struct mdss_panel_info *p)
-{
-	u16 id = PARAM_HBM_ID;
-
-	if (mdss_panel_param_is_supported(p, id) &&
-		p->param[id]->value == HBM_ON_STATE)
-		return true;
-
-	return false;
-};
 #endif /* MDSS_PANEL_H */
