@@ -680,6 +680,7 @@ static void mdss_xlog_dump_array(struct mdss_debug_base *blk_arr[],
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 		panic(name);
 	}
+	pr_info("%s: xlog dump created\n", __func__);
 	mutex_unlock(&mdss_dbg_xlog.xlog_lock);
 }
 
