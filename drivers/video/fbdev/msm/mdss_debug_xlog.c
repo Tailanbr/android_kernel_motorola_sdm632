@@ -262,7 +262,7 @@ static void mdss_xlog_dump_all(void)
 
 	while (__mdss_xlog_dump_calc_range()) {
 		mdss_xlog_dump_entry(xlog_buf, MDSS_XLOG_BUF_MAX);
-		pr_debug("%s", xlog_buf);
+		pr_info("%s", xlog_buf);
 		off += snprintf((mdss_dbg_xlog.xlog_user_buf + off),
 			(max_size - off), "%s", xlog_buf);
 		if ((off < 0) || (off > max_size))
@@ -486,7 +486,7 @@ void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag, char *addr,
 
 	*regs_phys = 0;
 
-	pr_debug("reg_dump_flag=%d in_log=%d in_mem=%d\n",
+	pr_err("reg_dump_flag=%d in_log=%d in_mem=%d\n",
 		reg_dump_flag, in_log, in_mem);
 
 	if (len % 16)
@@ -500,7 +500,7 @@ void mdss_dump_reg(const char *dump_name, u32 reg_dump_flag, char *addr,
 		}
 		if (*dump_mem) {
 			dump_addr = *dump_mem;
-			pr_debug("%s: start_addr:0x%pK end_addr:0x%pK reg_addr=0x%pK\n",
+			pr_err("%s: start_addr:0x%pK end_addr:0x%pK reg_addr=0x%pK\n",
 				dump_name, dump_addr, dump_addr + (u32)len * 16,
 				addr);
 		} else {
@@ -680,7 +680,6 @@ static void mdss_xlog_dump_array(struct mdss_debug_base *blk_arr[],
 		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
 		panic(name);
 	}
-	pr_info("%s: xlog dump created\n", __func__);
 	mutex_unlock(&mdss_dbg_xlog.xlog_lock);
 }
 
