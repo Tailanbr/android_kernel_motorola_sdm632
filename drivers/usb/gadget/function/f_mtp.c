@@ -1502,7 +1502,7 @@ mtp_function_bind(struct usb_configuration *c, struct usb_function *f)
 
 	fi_mtp->func_inst.f = &dev->function;
 	fi_mtp->is_bound = true;
-	DBG(cdev, "%s speed %s: IN/%s, OUT/%s\n",
+	mtp_log("%s speed %s: IN/%s, OUT/%s\n",
 		gadget_is_superspeed(c->cdev->gadget) ? "super" :
 		(gadget_is_dualspeed(c->cdev->gadget) ? "dual" : "full"),
 		f->name, dev->ep_in->name, dev->ep_out->name);
