@@ -71,6 +71,11 @@ static int cpu_to_affin;
 module_param(cpu_to_affin, int, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(cpu_to_affin, "affin usb irq to this cpu");
 
+/* Interrupt moderation for normal endpoints */
+static unsigned int dwc3_gadget_imod_val;
+module_param(dwc3_gadget_imod_val, int, 0644);
+MODULE_PARM_DESC(dwc3_gadget_imod_val,
+			"Interrupt moderation in usecs for normal EPs");
 /* pm qos latency */
 static int qos_latency;
 module_param(qos_latency, int, S_IRUGO|S_IWUSR);
