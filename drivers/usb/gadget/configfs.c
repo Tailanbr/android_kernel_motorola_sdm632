@@ -334,8 +334,8 @@ static ssize_t gadget_dev_desc_UDC_store(struct config_item *item,
 			ret = -EBUSY;
 			goto err;
 		}
-		gi->composite.gadget_driver.udc_name = name;
 		if (!gi->secure) {
+			gi->composite.gadget_driver.udc_name = name;
 			ret = usb_gadget_probe_driver(&gi->composite.gadget_driver);
 			if (ret) {
 				gi->composite.gadget_driver.udc_name = NULL;
@@ -1679,19 +1679,15 @@ static ssize_t secure_store(struct device *pdev, struct device_attribute *attr,
 	mode = !!mode;
 	if (mode == gi->secure)
 		return count;
-
-	mutex_lock(&gi->lock);
-
 	gi->secure = mode;
 
-	if (!gi->composite.gadget_driver.udc_name) {
-		mutex_unlock(&gi->lock);
+	if (!gi->composite.gadget_driver.udc_name)
 		return count;
-	}
 	pr_debug("Secure Store , UDC = %s, secure = %d\n",
 				gi->composite.gadget_driver.udc_name,
 				gi->secure);
 
+	mutex_lock(&gi->lock);
 	if (gi->secure) {
 		ret = usb_gadget_unregister_driver(
 				&gi->composite.gadget_driver);
