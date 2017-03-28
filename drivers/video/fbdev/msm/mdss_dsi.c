@@ -1614,7 +1614,22 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	 * data lanes for LP11 init
 	 */
 	if (mipi->lp11_init) {
+		if (mipi->lp11_lcdb_reset) {
+			ret = msm_mdss_enable_lcdb(
+				ctrl_pdata->panel_power_data.vreg_config,
+				ctrl_pdata->panel_power_data.num_vreg);
+		}
 		mdss_dsi_panel_reset(pdata, 1);
+
+		if (mipi->lp11_reset_lcdb)
+			ret = msm_mdss_enable_lcdb(
+				ctrl_pdata->panel_power_data.vreg_config,
+				ctrl_pdata->panel_power_data.num_vreg);
+		if (ret) {
+			pr_err("%s: failed to enable vregs for %s\n",
+				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
+			return ret;
+		}
 	}
 
 	if (mipi->init_delay)
