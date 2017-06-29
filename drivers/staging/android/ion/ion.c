@@ -520,7 +520,8 @@ static struct ion_handle *__ion_alloc(
 		if (!((1 << heap->id) & heap_id_mask))
 			continue;
 		trace_ion_alloc_buffer_start(client->name, heap->name, len,
-					     heap_id_mask, flags);
+				heap_id_mask, flags, client->pid, current->comm,
+					current->pid, (void *)buffer);
 		buffer = ion_buffer_create(heap, dev,
 					   client->name, len, align, flags);
 		trace_ion_alloc_buffer_end(client->name, heap->name, len,
