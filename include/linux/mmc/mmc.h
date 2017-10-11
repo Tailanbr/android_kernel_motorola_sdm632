@@ -281,7 +281,6 @@ struct _mmc_csd {
 #define EXT_CSD_PWR_CL_DDR_200_360	253	/* RO */
 #define EXT_CSD_FIRMWARE_VERSION	254	/* RO, 8 bytes */
 #define EXT_CSD_FW_VERSION		254	/* RO */
-#define EXT_CSD_DEVICE_VERSION		262	/* RO, 2 bytes */
 #define EXT_CSD_NUM_OF_FW_SEC_PROG     302     /* RO, 4 bytes */
 #define EXT_CSD_PRE_EOL_INFO		267	/* RO */
 #define EXT_CSD_DEVICE_LIFE_TIME_EST_TYP_A	268	/* RO */
@@ -290,8 +289,8 @@ struct _mmc_csd {
 #define EXT_CSD_CMDQ_SUPPORT		308	/* RO */
 #define EXT_CSD_BARRIER_SUPPORT		486	/* RO */
 #define EXT_CSD_FFU_ARG			487     /* RO, 4 bytes */
- #define EXT_CSD_TAG_UNIT_SIZE		498	/* RO */
- #define EXT_CSD_OPERATION_CODE_TIMEOUT 491     /* RO */
+#define EXT_CSD_TAG_UNIT_SIZE		498	/* RO */
+#define EXT_CSD_OPERATION_CODE_TIMEOUT	491     /* RO */
 #define EXT_CSD_FFU_FEATURES		492     /* RO */
 #define EXT_CSD_SUPPORTED_MODE		493	/* RO */
 #define EXT_CSD_TAG_UNIT_SIZE		498	/* RO */
