@@ -428,6 +428,11 @@ static void msm_restart_prepare(const char *cmd)
 		pr_info("set system warmreset mode for debug\n");
 	}
 
+	if (debug_sys_restart_mode == DEBUG_SYS_RESETART_WARM) {
+		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
+		pr_info("set system warmreset mode for debug\n");
+	}
+
 	flush_cache_all();
 
 	/*outer_flush_all is not supported by 64bit kernel*/
