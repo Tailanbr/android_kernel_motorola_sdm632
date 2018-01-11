@@ -156,10 +156,6 @@ extern int sdcardfs_interpose(struct dentry *dentry, struct super_block *sb,
 extern void sdcardfs_update_relatime_flag(struct file *lower_file,
 	struct inode *lower_inode, uid_t writer_uid);
 #endif
-#ifdef CONFIG_SDCARD_FS_DIR_WRITER
-extern void sdcardfs_update_xattr_dirwriter(struct dentry *lower_dentry,
-	uid_t writer_uid);
-#endif
 
 /* file private data */
 struct sdcardfs_file_info {
@@ -493,8 +489,7 @@ static inline void sdcardfs_put_real_lower(const struct dentry *dent,
 		sdcardfs_put_lower_path(dent, real_lower);
 }
 
-#if defined(CONFIG_SDCARD_FS_DIR_WRITER) || \
-	 defined(CONFIG_SDCARD_FS_PARTIAL_RELATIME)
+#ifdef CONFIG_SDCARD_FS_PARTIAL_RELATIME
 static inline int wildcard_path_match(char *wildcard_name,
 	const char **dir_name, int name_count) {
 	int i, len = strlen(wildcard_name), depth = 0;
