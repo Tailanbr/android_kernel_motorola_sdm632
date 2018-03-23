@@ -1632,7 +1632,6 @@ static void cont_flush(void)
 		 */
 		log_store(cont.facility, cont.level, cont.flags | LOG_NOCONS,
 			  cont.ts_nsec, NULL, 0, cont.buf, cont.len, this_cpu);
-		cont.flags = flags;
 		cont.flushed = true;
 	} else {
 		/*
