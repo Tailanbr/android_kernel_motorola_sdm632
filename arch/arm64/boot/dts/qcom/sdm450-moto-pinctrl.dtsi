@@ -11,14 +11,3 @@
  * GNU General Public License for more details.
  */
 
-/dts-v1/;
-
-#include "sdm450-ali.dtsi"
-
-/ {
-	model = "Qualcomm Technologies, Inc. SDM450 + PMI8950 MTP";
-	compatible = "qcom,sdm450-mtp", "qcom,sdm450", "qcom,mtp";
-	qcom,board-id = <8 0>;
-	qcom,pmic-id = <0x010016 0x010011 0x0 0x0>;
-};
-
