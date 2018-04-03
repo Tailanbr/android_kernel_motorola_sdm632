@@ -29,14 +29,16 @@
 #include <linux/regulator/consumer.h>
 #include <linux/firmware.h>
 #include <linux/debugfs.h>
-#include <linux/input/focaltech_mmi_modules.h>
+#include <linux/input/focaltech_mmi.h>
 #include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/kobject.h>
 #include <linux/sysfs.h>
 #include <linux/proc_fs.h>
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 #include "focaltech_flash.h"
+#endif
 
 
 #if defined(CONFIG_FB)
@@ -323,7 +325,6 @@ struct ft_ts_data {
 	u32 tch_data_len;
 	u8 fw_ver[3];
 	u8 fw_vendor_id;
-	const char *panel_supplier;
 	struct kobject *ts_info_kobj;
 #if defined(CONFIG_FB)
 	struct work_struct fb_notify_work;
@@ -473,7 +474,9 @@ static void TSI_id(struct input_dev *dev, int id)
 
 static int ft_ts_start(struct device *dev);
 static int ft_ts_stop(struct device *dev);
+#if defined(CONFIG_QPNP_SMB2_MMI)
 static void ft_resume_ps_chg_cm_state(struct ft_ts_data *data);
+#endif
 static struct config_modifier *ft_modifier_by_id(
 	struct ft_ts_data *data, int id);
 
@@ -772,6 +775,7 @@ static int ft_i2c_write(struct i2c_client *client, char *writebuf,
 	return ret;
 }
 
+#if !defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI) || defined(CONFIG_QPNP_SMB2_MMI)
 static int ft_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 {
 	u8 buf[2] = {0};
@@ -781,6 +785,7 @@ static int ft_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 
 	return ft_i2c_write(client, buf, sizeof(buf));
 }
+#endif
 
 static int ft_read_reg(struct i2c_client *client, u8 addr, u8 *val)
 {
@@ -803,24 +808,6 @@ static void ft_irq_enable(struct ft_ts_data *data)
 	}
 }
 
-static const char *ft_find_vendor_name(
-	const struct ft_ts_platform_data *pdata, u8 id)
-{
-	int i;
-
-	if (pdata->num_vendor_ids == 0)
-		return NULL;
-
-	for (i = 0; i < pdata->num_vendor_ids; i++)
-		if (id == pdata->vendor_ids[i]) {
-			pr_info("vendor id 0x%02x panel supplier is %s\n",
-				id, pdata->vendor_names[i]);
-			return pdata->vendor_names[i];
-		}
-
-	return NULL;
-}
-
 static void ft_update_fw_vendor_id(struct ft_ts_data *data)
 {
 	struct i2c_client *client = data->client;
@@ -831,8 +818,6 @@ static void ft_update_fw_vendor_id(struct ft_ts_data *data)
 	err = ft_i2c_read(client, &reg_addr, 1, &data->fw_vendor_id, 1);
 	if (err < 0)
 		dev_err(&client->dev, "fw vendor id read failed");
-	data->panel_supplier = ft_find_vendor_name(data->pdata,
-		data->fw_vendor_id);
 }
 
 static void ft_update_fw_ver(struct ft_ts_data *data)
@@ -876,13 +861,6 @@ static void ft_update_fw_id(struct ft_ts_data *data)
 		data->fw_id[0], data->fw_id[1]);
 }
 
-static void ft_clear_fw_id(struct ft_ts_data *data)
-{
-	data->fw_id[0] = 0;
-	data->fw_id[1] = 0;
-	data->fw_ver[0] = 0;
-}
-
 static void ft_ud_fix_mismatch(struct ft_ts_data *data)
 {
 	int i;
@@ -902,11 +880,9 @@ static irqreturn_t ft_ts_interrupt(int irq, void *dev_id)
 	struct ft_ts_data *data = dev_id;
 	struct input_dev *ip_dev;
 	int rc, i;
-	u32 id, x, y, status, num_touches;
+	u32 id, x, y, status, num_touches = 0;
 	u8 reg, *buf;
 	bool update_input = false;
-
-	num_touches = 0;
 
 	if (!data) {
 		pr_err("%s: Invalid data\n", __func__);
@@ -1095,16 +1071,14 @@ power_off:
 		return rc;
 	}
 
-	if (!IS_ERR(data->vcc_i2c)) {
-		rc = regulator_disable(data->vcc_i2c);
+	rc = regulator_disable(data->vcc_i2c);
+	if (rc) {
+		dev_err(&data->client->dev,
+			"Regulator vcc_i2c disable failed rc=%d\n", rc);
+		rc = regulator_enable(data->vdd);
 		if (rc) {
 			dev_err(&data->client->dev,
-				"Regulator vcc_i2c disable failed rc=%d\n", rc);
-			rc = regulator_enable(data->vdd);
-			if (rc) {
-				dev_err(&data->client->dev,
-					"Regulator vdd enable failed rc=%d\n", rc);
-			}
+				"Regulator vdd enable failed rc=%d\n", rc);
 		}
 	}
 
@@ -1158,31 +1132,23 @@ static int ft_power_init(struct ft_ts_data *data, bool on)
 
 reg_vcc_i2c_put:
 	regulator_put(data->vcc_i2c);
-	data->vcc_i2c = NULL;
 reg_vdd_set_vtg:
 	if (regulator_count_voltages(data->vdd) > 0)
 		regulator_set_voltage(data->vdd, 0, FT_VTG_MAX_UV);
 reg_vdd_put:
 	regulator_put(data->vdd);
-	data->vdd = NULL;
-
 	return rc;
 
 pwr_deinit:
-	if (!IS_ERR_OR_NULL(data->vdd)) {
-		if (regulator_count_voltages(data->vdd) > 0)
-			regulator_set_voltage(data->vdd, 0, FT_VTG_MAX_UV);
+	if (regulator_count_voltages(data->vdd) > 0)
+		regulator_set_voltage(data->vdd, 0, FT_VTG_MAX_UV);
 
-		regulator_put(data->vdd);
-	}
+	regulator_put(data->vdd);
 
-	if (!IS_ERR_OR_NULL(data->vcc_i2c)) {
-		if (regulator_count_voltages(data->vcc_i2c) > 0)
-			regulator_set_voltage(data->vcc_i2c, 0, FT_I2C_VTG_MAX_UV);
+	if (regulator_count_voltages(data->vcc_i2c) > 0)
+		regulator_set_voltage(data->vcc_i2c, 0, FT_I2C_VTG_MAX_UV);
 
-		regulator_put(data->vcc_i2c);
-	}
-
+	regulator_put(data->vcc_i2c);
 	return 0;
 }
 
@@ -1338,7 +1304,7 @@ static int ft_ts_stop(struct device *dev)
 	input_mt_report_pointer_emulation(data->input_dev, false);
 	input_sync(data->input_dev);
 
-	if (gpio_is_valid(data->pdata->reset_gpio) || (data->pdata->force_send_sleep == true)) {
+	if (gpio_is_valid(data->pdata->reset_gpio)) {
 		txbuf[0] = FT_REG_PMODE;
 		txbuf[1] = FT_PMODE_HIBERNATE;
 		ft_i2c_write(data->client, txbuf, sizeof(txbuf));
@@ -1442,10 +1408,10 @@ static int ft_ts_resume(struct device *dev)
 	err = ft_ts_start(dev);
 	if (err < 0)
 		return err;
-
+#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled)
 		ft_resume_ps_chg_cm_state(data);
-
+#endif
 	return 0;
 }
 
@@ -1544,6 +1510,7 @@ static void ft_ts_late_resume(struct early_suspend *handler)
 }
 #endif
 
+#if defined(CONFIG_QPNP_SMB2_MMI)
 static int ft_set_charger_state(struct ft_ts_data *data,
 					bool enable)
 {
@@ -1685,6 +1652,7 @@ static int ps_notify_callback(struct notifier_block *self,
 
 	return 0;
 }
+#endif
 
 static void ft_detection_work(struct work_struct *work)
 {
@@ -1847,6 +1815,7 @@ static int ft_fps_register_init(struct ft_ts_data *data)
 	return 0;
 }
 
+#if !defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 static int ft_auto_cal(struct i2c_client *client)
 {
 	struct ft_ts_data *data = i2c_get_clientdata(client);
@@ -2184,6 +2153,7 @@ rel_fw:
 	release_firmware(fw);
 	return rc;
 }
+#endif
 
 static ssize_t ft_poweron_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -2304,14 +2274,13 @@ static ssize_t ft_do_reflash_store(struct device *dev,
 	mutex_lock(&data->input_dev->mutex);
 	ft_irq_disable(data);
 	data->loading_fw = true;
-	if(data->pdata->fw_update_mmi) {
+#if defined(CONFIG_TOUCHSCREEN_FOCALTECH_UPGRADE_MMI)
 		retval = fts_ctpm_auto_upgrade(data->client,
 				data->fw_name,
 				data->pdata);
-	} else {
+#else
 		retval = ft_fw_upgrade(dev, true);
-	}
-
+#endif
 	if (retval)
 		dev_err(&data->client->dev,
 				"%s: FW %s upgrade failed\n",
@@ -2322,10 +2291,6 @@ static ssize_t ft_do_reflash_store(struct device *dev,
 	mutex_unlock(&data->input_dev->mutex);
 
 	retval = count;
-
-	ft_update_fw_ver(data);
-	ft_update_fw_vendor_id(data);
-	ft_update_fw_id(data);
 exit:
 	data->fw_name[0] = 0;
 	return retval;
@@ -2382,18 +2347,6 @@ static ssize_t ft_drv_irq_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%s\n",
 		data->irq_enabled ? "ENABLED" : "DISABLED");
 }
-
-static ssize_t ft_panel_supplier_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct ft_ts_data *data = dev_get_drvdata(dev);
-
-	if (data->panel_supplier)
-		return scnprintf(buf, PAGE_SIZE, "%s\n",
-			data->panel_supplier);
-	return 0;
-}
-static DEVICE_ATTR(panel_supplier, 0444, ft_panel_supplier_show, NULL);
 
 static ssize_t ft_drv_irq_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -2452,7 +2405,6 @@ static const struct attribute *ft_attrs[] = {
 	&dev_attr_doreflash.attr,
 	&dev_attr_buildid.attr,
 	&dev_attr_reset.attr,
-	&dev_attr_panel_supplier.attr,
 	&dev_attr_drv_irq.attr,
 	&dev_attr_tsi.attr,
 	NULL
@@ -2855,7 +2807,7 @@ static int ft_create_proc_entry(struct ft_ts_data *data)
 
 static void ft_remove_proc_entry(struct ft_ts_data *data)
 {
-	remove_proc_entry(FT_PROC_DIR_NAME, NULL);
+	proc_remove(data->proc_entry);
 }
 
 #ifdef CONFIG_OF
@@ -3082,7 +3034,6 @@ static int ft_parse_dt(struct device *dev,
 	struct property *prop;
 	u32 temp_val, num_buttons;
 	u32 button_map[MAX_BUTTONS];
-	u32 num_vendor_ids, i;
 
 	pdata->name = "focaltech";
 	rc = of_property_read_string(np, "focaltech,name", &pdata->name);
@@ -3207,16 +3158,6 @@ static int ft_parse_dt(struct device *dev,
 	pdata->resume_in_workqueue = of_property_read_bool(np,
 					"focaltech,resume-in-workqueue");
 
-	if (of_property_read_bool(np, "focaltech,fw-update-mmi")) {
-		pr_notice("using mmi firmware update\n");
-		pdata->fw_update_mmi = true;
-	}
-
-	if (of_property_read_bool(np, "focaltech,force-send-sleep")) {
-		pr_notice("using mmi force send sleep cmd\n");
-		pdata->force_send_sleep = true;
-	}
-
 	if (of_property_read_bool(np, "focaltech,x-flip")) {
 		pr_notice("using flipped X axis\n");
 		pdata->x_flip = true;
@@ -3248,31 +3189,6 @@ static int ft_parse_dt(struct device *dev,
 		}
 	}
 
-	num_vendor_ids = of_property_count_elems_of_size(np,
-		"focaltech,vendor_ids", sizeof(u32));
-	if ((num_vendor_ids > 0) && (num_vendor_ids < MAX_PANEL_SUPPLIERS)) {
-		const char *name;
-
-		rc = of_property_read_u32_array(np,
-			"focaltech,vendor_ids", pdata->vendor_ids,
-			num_vendor_ids);
-		if (rc) {
-			dev_err(dev, "Unable to read vendor ids\n");
-			return rc;
-		}
-		prop = of_find_property(np, "focaltech,vendor_names", NULL);
-		if (!prop) {
-			dev_err(dev, "Unable to read vendor names\n");
-			return rc;
-		}
-		for (name = of_prop_next_string(prop, NULL), i = 0;
-			i < num_vendor_ids;
-			name = of_prop_next_string(prop, name), i++)
-			pdata->vendor_names[i] = name;
-
-		pdata->num_vendor_ids = num_vendor_ids;
-	}
-
 	return 0;
 }
 #else
@@ -3297,10 +3213,12 @@ static int ft_reboot(struct notifier_block *nb,
 		data->is_fps_registered = false;
 	}
 
+#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled) {
 		power_supply_unreg_notifier(&data->ps_notif);
 		data->charger_detection_enabled = false;
 	}
+#endif
 
 #if defined(CONFIG_FB)
 	fb_unregister_client(&data->fb_notif);
@@ -3345,7 +3263,6 @@ static int ft_ts_probe(struct i2c_client *client,
 	struct dentry *temp;
 	u8 reg_value = 0;
 	u8 reg_addr;
-	u8 lic_ver = 0;
 	int err, retval, attr_count;
 
 	if (client->dev.of_node) {
@@ -3512,10 +3429,6 @@ static int ft_ts_probe(struct i2c_client *client,
 		goto input_register_device_err;
 	}
 
-	if ((pdata->family_id == FT8006U_ID) || (pdata->family_id == FT5422U_ID)) {
-		fts_extra_init(client, input_dev, pdata);
-	}
-
 	err = request_threaded_irq(client->irq, NULL,
 				ft_ts_interrupt,
 	/*
@@ -3640,20 +3553,6 @@ static int ft_ts_probe(struct i2c_client *client,
 	ft_update_fw_vendor_id(data);
 	ft_update_fw_id(data);
 
-	if (pdata->family_id == FT8006U_ID) {
-		fts_lic_get_ver_in_tp(client, &lic_ver);
-		/*
-		* If display initial code isn't written fully, then this value should be
-		* a negative value with signed(e.g. 0xFF), therefore need to clear the buildid
-		* info then this will cause script update the touch firmware again.
-		*/
-		dev_info(&client->dev, "Display init code ver:%d\n",
-			(s8)lic_ver);
-		if ((s8)lic_ver < 0) {
-			ft_clear_fw_id(data);
-		}
-	}
-
 #if defined(CONFIG_FB)
 	INIT_WORK(&data->fb_notify_work, fb_notify_resume_work);
 	data->fb_notif.notifier_call = fb_notifier_callback;
@@ -3685,6 +3584,7 @@ static int ft_ts_probe(struct i2c_client *client,
 	exp_fn_ctrl.data_ptr = data;
 	mutex_unlock(&exp_fn_ctrl_mutex);
 
+#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled) {
 		struct power_supply *psy = NULL;
 
@@ -3725,6 +3625,7 @@ static int ft_ts_probe(struct i2c_client *client,
 						data->ps_is_present);
 		}
 	}
+#endif
 
 	if (data->fps_detection_enabled) {
 		data->fps_notif.notifier_call = fps_notifier_callback;
@@ -3749,9 +3650,12 @@ static int ft_ts_probe(struct i2c_client *client,
 reboot_register_err:
 	if (data->is_fps_registered)
 		FPS_unregister_notifier(&data->fps_notif, 0xBEEF);
+
+#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled)
 		power_supply_unreg_notifier(&data->ps_notif);
 free_fb_notifier:
+#endif
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
 		dev_err(&client->dev, "Error occurred while unregistering fb_notifier.\n");
@@ -3826,8 +3730,10 @@ static int ft_ts_remove(struct i2c_client *client)
 
 	unregister_reboot_notifier(&data->ft_reboot);
 
+#if defined(CONFIG_QPNP_SMB2_MMI)
 	if (data->charger_detection_enabled)
 		power_supply_unreg_notifier(&data->ps_notif);
+#endif
 
 #if defined(CONFIG_FB)
 	if (fb_unregister_client(&data->fb_notif))
@@ -3850,10 +3756,6 @@ static int ft_ts_remove(struct i2c_client *client)
 	data->irq_enabled = false;
 
 	ft_gpio_configure(data, false);
-
-	if ((data->pdata->family_id == FT8006U_ID) || (data->pdata->family_id == FT5422U_ID)) {
-		fts_extra_exit();
-	}
 
 	if (data->ts_pinctrl) {
 		if (IS_ERR_OR_NULL(data->pinctrl_state_release)) {
@@ -3880,7 +3782,6 @@ static int ft_ts_remove(struct i2c_client *client)
 		ft_power_init(data, false);
 
 	input_unregister_device(data->input_dev);
-	data->input_dev = NULL;
 	input_free_device(data->input_dev);
 	kobject_put(data->ts_info_kobj);
 	return 0;
