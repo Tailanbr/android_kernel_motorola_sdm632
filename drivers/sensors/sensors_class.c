@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, 2017 The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -450,7 +450,6 @@ static ssize_t sensors_calibrate_store(struct device *dev,
 	}
 	return size;
 }
-/*add for sar sensor register zhanghaipeng.wt bengin*/
 static DEVICE_ATTR(name, 0444, sensors_name_show, NULL);
 static DEVICE_ATTR(vendor, 0444, sensors_vendor_show, NULL);
 static DEVICE_ATTR(version, 0444, sensors_version_show, NULL);
@@ -460,41 +459,46 @@ static DEVICE_ATTR(max_range, 0444, sensors_max_range_show, NULL);
 static DEVICE_ATTR(resolution, 0444, sensors_resolution_show, NULL);
 static DEVICE_ATTR(sensor_power, 0444, sensors_power_show, NULL);
 static DEVICE_ATTR(min_delay, 0444, sensors_min_delay_show, NULL);
-static DEVICE_ATTR(fifo_reserved_event_count, 0444, sensors_fifo_event_show, NULL);
+static DEVICE_ATTR(fifo_reserved_event_count, 0444, sensors_fifo_event_show,
+	NULL);
 static DEVICE_ATTR(fifo_max_event_count, 0444, sensors_fifo_max_show, NULL);
 static DEVICE_ATTR(max_delay, 0444, sensors_max_delay_show, NULL);
 static DEVICE_ATTR(flags, 0444, sensors_flags_show, NULL);
 static DEVICE_ATTR(enable, 0664, sensors_enable_show, sensors_enable_store);
-static DEVICE_ATTR(enable_wakeup, 0664, sensors_enable_wakeup_show,sensors_enable_wakeup_store);
+static DEVICE_ATTR(enable_wakeup, 0664, sensors_enable_wakeup_show,
+	sensors_enable_wakeup_store);
 static DEVICE_ATTR(poll_delay, 0664, sensors_delay_show, sensors_delay_store);
 static DEVICE_ATTR(self_test, 0440, sensors_test_show, NULL);
-static DEVICE_ATTR(max_latency, 0660, sensors_max_latency_show,sensors_max_latency_store);
+static DEVICE_ATTR(max_latency, 0660, sensors_max_latency_show,
+	sensors_max_latency_store);
 static DEVICE_ATTR(flush, 0660, sensors_flush_show, sensors_flush_store);
-static DEVICE_ATTR(calibrate, 0664, sensors_calibrate_show,sensors_calibrate_store);
+static DEVICE_ATTR(calibrate, 0664, sensors_calibrate_show,
+	sensors_calibrate_store);
 
-static struct device_attribute *sensors_class_attrs[] = {
-	&dev_attr_name,
-	&dev_attr_vendor,
-	&dev_attr_version,
-	&dev_attr_handle,
-	&dev_attr_type,
-	&dev_attr_max_range,
-	&dev_attr_resolution,
-	&dev_attr_sensor_power,
-	&dev_attr_min_delay,
-	&dev_attr_fifo_reserved_event_count,
-	&dev_attr_fifo_max_event_count,
-	&dev_attr_max_delay,
-	&dev_attr_flags,
-	&dev_attr_enable,
-	&dev_attr_enable_wakeup,
-	&dev_attr_poll_delay,
-	&dev_attr_self_test,
-	&dev_attr_max_latency,
-	&dev_attr_flush,
-	&dev_attr_calibrate
+static struct attribute *sensors_class_attrs[] = {
+	&dev_attr_name.attr,
+	&dev_attr_vendor.attr,
+	&dev_attr_version.attr,
+	&dev_attr_handle.attr,
+	&dev_attr_type.attr,
+	&dev_attr_max_range.attr,
+	&dev_attr_resolution.attr,
+	&dev_attr_sensor_power.attr,
+	&dev_attr_min_delay.attr,
+	&dev_attr_fifo_reserved_event_count.attr,
+	&dev_attr_fifo_max_event_count.attr,
+	&dev_attr_max_delay.attr,
+	&dev_attr_flags.attr,
+	&dev_attr_enable.attr,
+	&dev_attr_enable_wakeup.attr,
+	&dev_attr_poll_delay.attr,
+	&dev_attr_self_test.attr,
+	&dev_attr_max_latency.attr,
+	&dev_attr_flush.attr,
+	&dev_attr_calibrate.attr,
+	NULL,
 };
-/*add for sar sensor register zhanghaipeng.wt end*/
+ATTRIBUTE_GROUPS(sensors_class);
 
 /**
  * sensors_classdev_register - register a new object of sensors_classdev class.
@@ -504,26 +508,17 @@ static struct device_attribute *sensors_class_attrs[] = {
 int sensors_classdev_register(struct device *parent,
 				struct sensors_classdev *sensors_cdev)
 {
-	int ret = 0;
-	int i = 0;
-	printk("sensors_classdev_register,%s\n",sensors_cdev->name);
 	sensors_cdev->dev = device_create(sensors_class, parent, 0,
 				      sensors_cdev, "%s", sensors_cdev->name);
 	if (IS_ERR(sensors_cdev->dev))
-		{
-		printk("sensors_classdev_register fail\n");
 		return PTR_ERR(sensors_cdev->dev);
-		}
+
 	down_write(&sensors_list_lock);
 	list_add_tail(&sensors_cdev->node, &sensors_list);
 	up_write(&sensors_list_lock);
-	for (i = 0; i < ARRAY_SIZE(sensors_class_attrs); ++i) {
-		ret = device_create_file(sensors_cdev->dev, sensors_class_attrs[i]);
-		if (ret)
-			printk("i = %d,device_create_file register fail\n",i);
-		}
-	printk("Registered sensors device: %s,ret = %d\n",
-			sensors_cdev->name,ret);
+
+	pr_debug("Registered sensors device: %s\n",
+			sensors_cdev->name);
 	return 0;
 }
 EXPORT_SYMBOL(sensors_classdev_register);
@@ -535,7 +530,6 @@ EXPORT_SYMBOL(sensors_classdev_register);
 */
 void sensors_classdev_unregister(struct sensors_classdev *sensors_cdev)
 {
-	printk("%s\n",__func__);
 	device_unregister(sensors_cdev->dev);
 	down_write(&sensors_list_lock);
 	list_del(&sensors_cdev->node);
@@ -545,15 +539,10 @@ EXPORT_SYMBOL(sensors_classdev_unregister);
 
 static int __init sensors_init(void)
 {
-	printk("moto sensor init!\n");
 	sensors_class = class_create(THIS_MODULE, "sensors");
 	if (IS_ERR(sensors_class))
-		{
-			printk("sensor init fail!\n");
-			return PTR_ERR(sensors_class);
-		}
-	printk("sensor init success!\n");
-	//sensors_class->dev_attrs = sensors_class_attrs;
+		return PTR_ERR(sensors_class);
+	sensors_class->dev_groups = sensors_class_groups;
 	return 0;
 }
 
@@ -564,4 +553,3 @@ static void __exit sensors_exit(void)
 
 subsys_initcall(sensors_init);
 module_exit(sensors_exit);
-MODULE_LICENSE("GPL v2");
