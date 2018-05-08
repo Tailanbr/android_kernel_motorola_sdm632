@@ -37,9 +37,6 @@
 extern void msm_rpmstats_log_suspend_enter(void);
 extern void msm_rpmstats_log_suspend_exit(int error);
 #endif
-#ifdef CONFIG_SUSPEND_DEBUG
-#include "user_sysfs_private.h"
-#endif
 
 const char *pm_labels[] = { "mem", "standby", "freeze", NULL };
 const char *pm_states[PM_SUSPEND_MAX];
