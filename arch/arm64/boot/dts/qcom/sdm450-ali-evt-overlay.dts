@@ -15,11 +15,10 @@
 
 #include <dt-bindings/clock/msm-clocks-8953.h>
 
-#include "sdm450-ali-common-overlay.dtsi"
+#include "sdm450-ali.dtsi"
 
 / {
 	model = "ali";
-	compatible = "ali,evt1";
 	qcom,msm-id = <338 0x0>;
 	qcom,board-id = <0x41 0xA100>;
 };
