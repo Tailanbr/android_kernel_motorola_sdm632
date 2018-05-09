@@ -296,78 +296,9 @@ struct smb_iio {
 	struct iio_channel	*connector_temp_thr3_chan;
 };
 
-struct mmi_temp_zone {
-	int		temp_c;
-	int		norm_mv;
-	int		fcc_max_ma;
-	int		fcc_norm_ma;
-};
-
-#define MAX_NUM_STEPS 10
-enum mmi_temp_zones {
-	ZONE_FIRST = 0,
-	/* states 0-9 are reserved for zones */
-	ZONE_LAST = MAX_NUM_STEPS + ZONE_FIRST - 1,
-	ZONE_HOT,
-	ZONE_COLD,
-	ZONE_NONE = 0xFF,
-};
-
-enum mmi_chrg_step {
-	STEP_MAX,
-	STEP_NORM,
-	STEP_FULL,
-	STEP_FLOAT,
-	STEP_DEMO,
-	STEP_STOP,
-	STEP_NONE = 0xFF,
-};
-
-enum charging_limit_modes {
-	CHARGING_LIMIT_OFF,
-	CHARGING_LIMIT_RUN,
-	CHARGING_LIMIT_UNKNOWN,
-};
-
 struct mmi_params {
 	bool			factory_mode;
-	int			demo_mode;
-	struct notifier_block	smb_reboot;
-	/* thermal mitigation */
-	int			usb_system_temp_level;
-	int			usb_thermal_levels;
-	int			*usb_thermal_mitigation;
-	bool			factory_kill_armed;
-
-	/* Charge Profile */
-	int			num_temp_zones;
-	struct mmi_temp_zone	*temp_zones;
-	enum mmi_temp_zones	pres_temp_zone;
-	enum mmi_chrg_step	pres_chrg_step;
-	int			chrg_taper_cnt;
-	int			temp_state;
-	int			chrg_iterm;
-	atomic_t		hb_ready;
-	struct alarm		heartbeat_alarm;
-	struct delayed_work	heartbeat_work;
-	struct wakeup_source	smblib_mmi_hb_wake_source;
-	int			charger_debounce_cnt;
-	bool			apsd_done;
-	int			charger_rate;
-	bool			hvdcp3_con;
-	bool			init_done;
-	int			vbus_inc_cnt;
-	bool			enable_charging_limit;
-	bool			is_factory_image;
-	enum charging_limit_modes	charging_limit_modes;
-	int			upper_limit_capacity;
-	int			lower_limit_capacity;
-	int			base_fv_mv;
-	int			vfloat_comp_mv;
-	int			batt_health;
-	int			max_chrg_temp;
-	bool			force_chg_suspend;
-	bool			mmi_hvdcp_disable;
+	bool			demo_mode;
 };
 
 struct smb_charger {
@@ -517,15 +448,6 @@ struct smb_charger {
 	/* mmi based params */
 	/* Place at end of struct smb_charger as it grows */
 	struct mmi_params	mmi;
-	void			*ipc_log;
-	void			*ipc_log_reg;
-	bool			reverse_boost;
-	bool			suspended;
-
-	/* dual role */
-	bool				dr_supported;
-	struct dual_role_phy_instance	*dr_inst;
-	struct dual_role_phy_desc	dr_desc;
 };
 
 int smblib_read(struct smb_charger *chg, u16 addr, u8 *val);
@@ -689,12 +611,6 @@ int smblib_icl_override(struct smb_charger *chg, bool override);
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
 
-int smblib_get_prop_usb_system_temp_level(struct smb_charger *chg,
-					  union power_supply_propval *val);
-int smblib_set_prop_usb_system_temp_level(struct smb_charger *chg,
-				const union power_supply_propval *val);
-int smblib_typec_dual_role_init(struct smb_charger *chg);
 void mmi_init(struct smb_charger *chg);
 void mmi_deinit(struct smb_charger *chg);
-void mmi_chrg_rate_check(struct smb_charger *chip);
 #endif /* __SMB5_CHARGER_H */
