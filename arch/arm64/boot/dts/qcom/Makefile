@@ -7,102 +7,6 @@ endif
 # to be runtime added by the bootloader (i.e. /chosen properties)
 DTC_FLAGS += -p 1024
 
-dtbo-$(CONFIG_ALI_DTB) += sdm450-ali-evt-overlay.dtbo
-
-dtbo-$(CONFIG_RIVER_DTB) += \
-	sdm632-river-evt-overlay.dtbo \
-	sdm632-river-na-evt-overlay.dtbo \
-	sdm632-river-evt2-overlay.dtbo \
-	sdm632-river-na-evt2-overlay.dtbo \
-	sdm632-river-dvt1b-overlay.dtbo
-
-dtbo-$(CONFIG_OCEAN_DTB) += \
-	sdm632-ocean-na-evt1-overlay.dtbo \
-	sdm632-ocean-row-evt1-overlay.dtbo \
-	sdm632-ocean-na-evt2-overlay.dtbo \
-	sdm632-ocean-row-evt2-overlay.dtbo \
-	sdm632-ocean-row-dvt1a-overlay.dtbo \
-	sdm632-ocean-na-dvt1a-overlay.dtbo \
-	sdm632-ocean-row-dvt1b-overlay.dtbo \
-	sdm632-ocean-na-dvt1b-overlay.dtbo \
-	sdm632-ocean-row-dvt2-overlay.dtbo \
-	sdm632-ocean-row-pvt1-overlay.dtbo \
-	sdm632-ocean-na-dvt2-overlay.dtbo \
-	sdm632-ocean-na-pvt1-overlay.dtbo
-
-dtbo-$(CONFIG_CHANNEL_DTB) += \
-	sdm632-channel-evt-overlay.dtbo \
-	sdm632-channel-dvt2-overlay.dtbo \
-	sdm632-channel-pvt-overlay.dtbo \
-	sdm632-channel-pvta-overlay.dtbo \
-	sdm632-channel-pvtb-overlay.dtbo \
-	sdm632-channel-pvtc-overlay.dtbo \
-	sdm632-channel-na-evt-overlay.dtbo \
-	sdm632-channel-na-dvt1b-overlay.dtbo \
-	sdm632-channel-tmo-dvt-overlay.dtbo
-
-dtbo-$(CONFIG_SURFNA_DTB) += msm8940-surfna-evt-overlay.dtbo
-
-sdm450-ali-evt-overlay.dtbo-base := \
-		sdm450-ali-base.dtb
-
-sdm632-river-evt-overlay.dtbo-base := \
-       sdm632-river-base.dtb
-sdm632-river-na-evt-overlay.dtbo-base := \
-       sdm632-river-base.dtb
-sdm632-river-evt2-overlay.dtbo-base := \
-       sdm632-river-base.dtb
-sdm632-river-na-evt2-overlay.dtbo-base := \
-       sdm632-river-base.dtb
-sdm632-river-dvt1b-overlay.dtbo-base := \
-       sdm632-river-base.dtb
-
-sdm632-ocean-na-evt1-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-row-evt1-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-na-evt2-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-row-evt2-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-row-dvt1a-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-na-dvt1a-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-row-dvt1b-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-na-dvt1b-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-row-dvt2-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-row-pvt1-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-na-dvt2-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-sdm632-ocean-na-pvt1-overlay.dtbo-base := \
-       sdm632-ocean-base.dtb
-
-sdm632-channel-evt-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-dvt2-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-pvt-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-pvta-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-pvtb-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-pvtc-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-na-evt-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-na-dvt1b-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-sdm632-channel-tmo-dvt-overlay.dtbo-base := \
-	sdm632-channel-base.dtb
-
-msm8940-surfna-evt-overlay.dtbo-base := \
-	msm8940-surfna-base.dtb
 else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb msm8916-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
@@ -752,6 +656,8 @@ dtb-$(CONFIG_ARCH_SDM429) += sdm429-mtp.dtb \
 
 endif
 endif  #CONFIG_MMI_DEVICE_DTBS
+
+dtb-$(CONFIG_ARCH_SDM845_VM) += sdm845-vm.dtb
 
 always		:= $(dtb-y)
 subdir-y	:= $(dts-dirs)
