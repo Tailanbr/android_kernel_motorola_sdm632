@@ -709,6 +709,12 @@ endif
 
 ifeq ($(CONFIG_ALI_DTB),y)
 dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-p0a.dtb
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-evt2.dtb
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt1a.dtb
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt1b.dtb
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-dvt2.dtb
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-pvt1.dtb
+dtb-$(CONFIG_ARCH_SDM450) += sdm450-ali-pvt2.dtb
 endif
 
 dtb-$(CONFIG_ARCH_SDM632) += sdm632-rumi.dtb \
