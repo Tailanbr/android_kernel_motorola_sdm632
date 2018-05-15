@@ -14,24 +14,3 @@
 
 #include "sdm632-moto-base.dtsi"
 
-&soc {
-	/delete-node/ gpio_keys;
-};
-
-&mdss_dsi0 {
-	/delete-property/ vdd-supply;
-};
-
-&pmi632_rgb {
-	/delete-node/ green;
-	/delete-node/ blue;
-};
-
-&pmi632_3 {
-	/delete-node/ qcom,vibrator@5700;
-};
-
-&thermal_zones {
-	/delete-node/ quiet-therm-adc;
-};
-/delete-node/ &adv_vreg;
