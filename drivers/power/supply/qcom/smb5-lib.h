@@ -299,6 +299,7 @@ struct smb_iio {
 struct mmi_params {
 	bool			factory_mode;
 	bool			demo_mode;
+	struct notifier_block	smb_reboot;
 };
 
 struct smb_charger {
