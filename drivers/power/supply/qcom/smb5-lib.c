@@ -4690,8 +4690,6 @@ int smblib_deinit(struct smb_charger *chg)
 
 static struct smb_charger *mmi_chip;
 
-static int factory_kill_disable;
-module_param(factory_kill_disable, int, 0644);
 static int smbchg_reboot(struct notifier_block *nb,
 			 unsigned long event, void *unused)
 {
