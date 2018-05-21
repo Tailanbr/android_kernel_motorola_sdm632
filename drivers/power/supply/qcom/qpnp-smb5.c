@@ -1410,8 +1410,7 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 				POWER_SUPPLY_PROP_VOLTAGE_NOW, val);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		val->intval = get_client_vote(chg->fv_votable,
-				BATT_PROFILE_VOTER);
+		val->intval = get_effective_result(chg->fv_votable);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		rc = smblib_get_prop_from_bms(chg,
@@ -1421,8 +1420,7 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		val->intval = get_client_vote(chg->fcc_votable,
-					      BATT_PROFILE_VOTER);
+		val->intval = get_effective_result(chg->fcc_votable);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_TERM_CURRENT:
 		rc = smb5_get_prop_batt_iterm(chg, val);
