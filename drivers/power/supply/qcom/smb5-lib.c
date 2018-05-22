@@ -3753,13 +3753,7 @@ static void typec_src_removal(struct smb_charger *chg)
 
 	chg->typec_legacy = false;
 
-	chg->mmi.charging_limit_modes = CHARGING_LIMIT_OFF;
 	chg->mmi.hvdcp3_con = false;
-	chg->mmi.vbus_inc_cnt = 0;
-	vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
-	cancel_delayed_work(&chg->mmi.heartbeat_work);
-	schedule_delayed_work(&chg->mmi.heartbeat_work,
-			      msecs_to_jiffies(0));
 }
 
 #ifdef QCOM_BASE
@@ -4851,7 +4845,8 @@ void mmi_chrg_rate_check(struct smb_charger *chip)
 		goto end_rate_check;
 	}
 
-	if (chip->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH) {
+	if (chip->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH  ||
+		mmi->hvdcp3_con) {
 		mmi->charger_rate = POWER_SUPPLY_CHARGE_RATE_TURBO;
 		goto end_rate_check;
 	}
@@ -4974,7 +4969,10 @@ static void mmi_heartbeat_work(struct work_struct *work)
 
 		switch (chip->typec_mode) {
 		case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
-			cl_cc = 500;
+			if (mmi->hvdcp3_con)
+				cl_cc = 3000;
+			else
+				cl_cc = 500;
 			break;
 		case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
 			cl_cc = 1500;
