@@ -57,7 +57,7 @@
 };
 
 &dai_slim {
-	status = "disabled";
+	status = "okay";
 };
 
 &slim_msm {
@@ -151,30 +151,6 @@
 			cirrus,gpio-src-select = <0x4>;
 			cirrus,gpio-output-enable;
 		};
-
-		adsps {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			prince_dsp: adsp@2b80000 {
-				reg = <0x2b80000>;
-				firmware {
-					protection {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-prot.bin";
-					};
-					calibration {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-prot.wmfw";
-						cirrus,bin-file = "cs35l41-dsp1-spk-cali.bin";
-					};
-					diagnostic {
-						cirrus,full-name;
-						cirrus,wmfw-file = "cs35l41-dsp1-spk-diag.wmfw";
-					};
-				};
-			};
-		};
 	};
 };
 
@@ -228,7 +204,7 @@
 		cirrus,micbias1 = <2600 1 1 1 1 1 1 0>;
 		cirrus,micbias2 = <2600 1 1 1 1 1 1 0>;
 		cirrus,inmode = <
-			0 0 0 1
+			0 0 0 0
 			0 0 0 0
 		>;
 		cirrus,out-mono = <0 1 0 0 0 0>;
@@ -240,8 +216,6 @@
 			acc@1 {
 				reg = <1>;
 
-				cirrus,init-mic-delay-ms = <200>;
-				cirrus,micd-manual-debounce = <3>;
 				cirrus,micd-detect-debounce-ms = <600>;
 				cirrus,micd-bias-start-time = <8>;
 				cirrus,micd-rate = <6>;
@@ -267,10 +241,8 @@
 				reg = <0x0ffe00>;
 				firmware {
 					ultrasound {
-						cirrus,wmfw-file = "marley-dsp1-ultrasound.wmfw";
-						cirrus,bin-file = "marley-dsp1-ultrasound.bin";
-						cirrus,full-name;
-						cirrus,compr-caps = <14 8 4 1 16000 96000>;
+						wlf,wmfw-file = "marley-dsp1-ultrasound.wmfw";
+						wlf,bin-file = "marley-dsp1-ultrasound.bin";
 					};
 				};
 			};
@@ -278,10 +250,8 @@
 				reg = <0x17fe00>;
 				firmware {
 					frontend {
-						cirrus,wmfw-file = "marley-dsp2-aov-frontend.wmfw";
-						cirrus,bin-file = "marley-dsp2-aov-vrgain.bin";
-						cirrus,full-name;
-						cirrus,compr-caps = <14 1 4 1 16000>;
+						wlf,wmfw-file = "marley-dsp2-aov-frontend.wmfw";
+						wlf,bin-file = "marley-dsp2-aov-vrgain.bin";
 					};
 				};
 			};
@@ -289,10 +259,8 @@
 				reg = <0x1ffe00>;
 				firmware {
 					aov {
-						cirrus,wmfw-file = "marley-dsp3-aov-control.wmfw";
-						cirrus,bin-file = "marley-dsp3-aov-model.bin";
-						cirrus,full-name;
-						cirrus,compr-caps = <14 1 4 1 16000>;
+						wlf,wmfw-file = "marley-dsp3-aov-control.wmfw";
+						wlf,bin-file = "marley-dsp3-aov-model.bin";
 					};
 				};
 			};
@@ -371,17 +339,5 @@
 			"IN2L",  "GPSW",
 			"IN2R",  "MICBIAS2B",
 			"IN1BR", "MICBIAS1B";
-	};
-
-	msm-cirrus-playback {
-		compatible = "cirrus,msm-cirrus-playback";
-		usecase-names = "Normal", "Voice", "Ring", "Sonification";
-		usecase-indexes = <0 1 2 3>;
-		afe-port-id = <16384>;
-	};
-
-	aov_trigger {
-		compatible = "mmi,aov-trigger";
-		status = "ok";
 	};
 };
