@@ -443,7 +443,6 @@ static int fts_5x46_fw_upgrade_with_app_bin_file(struct i2c_client *client, cons
     }
 
     return i_ret;
-
 file_upgrade_rel_fw:
 	release_firmware(fw);
 	return i_ret;
