@@ -15,10 +15,6 @@
 #include <linux/types.h>
 #include <linux/regulator/consumer.h>
 #include <linux/module.h>
-#if defined(CONFIG_FB)
-#include <linux/notifier.h>
-#include <linux/fb.h>
-#endif
 
 #define SM5350_LED_DEV "SM5350-BL"
 #define SM5350_NAME "sm5350-bl"
@@ -46,7 +42,7 @@
 #define SM5350_CTL_A_BRIGHTNESS_MSB_REG			0x21
 #define SM5350_CTL_B_BRIGHTNESS_LSB_REG			0x22
 #define SM5350_CTL_B_BRIGHTNESS_MSB_REG			0x23
-#define SM5350_CTL_BANK_EN_REG				0x24
+#define SM5350_CTL_B_BANK_EN_REG				0x24
 #define SM5350_HVLED_OPEN_FAULTS_REG			0xB0
 #define SM5350_HVLED_SHORT_FAULTS_REG			0xB2
 #define SM5350_LED_FAULT_ENABLES_REG			0xB4
@@ -59,9 +55,6 @@ struct sm5350_data {
 	struct mutex		lock;
 	struct work_struct	work;
 	enum led_brightness brightness;
-#ifdef CONFIG_FB
-	struct notifier_block fb_notif;
-#endif
 	bool enable;
 	bool bank_A;
 	bool bank_B;
@@ -150,50 +143,17 @@ static int sm5350_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 static int sm5350_init_registers(struct sm5350_data *drvdata)
 {
 	int err = 0;
-	int current_sink_out_cfg = 7;
 
 	sm5350_write_reg(drvdata->client, SM5350_BOOST_CTL_REG, drvdata->boost_ctl);
 	sm5350_write_reg(drvdata->client, SM5350_PWM_CFG_REG, drvdata->pwm_cfg);
-	sm5350_write_reg(drvdata->client, SM5350_CTL_BANK_EN_REG, drvdata->ctl_bank_en);
-	if(drvdata->bank_B) {
-		sm5350_write_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, drvdata->full_scale_current);
-		current_sink_out_cfg = 7;
-	}else {
-		sm5350_write_reg(drvdata->client, SM5350_CTL_A_FULL_SCALE_CURR_REG, drvdata->full_scale_current);
-		current_sink_out_cfg = 0;
-	}
-	sm5350_write_reg(drvdata->client,  SM5350_HVLED_CURR_SINK_OUT_CFG_REG, current_sink_out_cfg);
+	sm5350_write_reg(drvdata->client, SM5350_CTL_B_BANK_EN_REG, drvdata->ctl_bank_en);
 	sm5350_write_reg(drvdata->client, SM5350_BRIGHTNESS_CFG_REG, drvdata->map_mode);
+	sm5350_write_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, drvdata->full_scale_current);
 
 	drvdata->enable = true;
 
 	return err;
 }
-
-#if defined(CONFIG_FB)
-static int fb_notifier_callback(struct notifier_block *self,
-				       unsigned long event, void *data)
-{
-	int *blank;
-	struct fb_event *evdata = data;
-	struct sm5350_data *drvdata =
-		container_of(self, struct sm5350_data, fb_notif);
-
-	/*
-	 *  FB_EVENT_BLANK(0x09): A hardware display blank change occurred.
-	 *  FB_EARLY_EVENT_BLANK(0x10): A hardware display blank early change
-	 * occurred.
-	 */
-	if (evdata && evdata->data && (event == FB_EARLY_EVENT_BLANK)) {
-		blank = evdata->data;
-		if (*blank == FB_BLANK_POWERDOWN)
-			drvdata->enable = false;
-	}
-
-	return NOTIFY_OK;
-}
-#endif
-
 void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 {
 
@@ -201,9 +161,6 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 	u8 brt_MSB = 0;
 	int index = 0, remainder;
 	int code, code1, code2;
-
-	if (drvdata->enable == false)
-		sm5350_init_registers(drvdata);
 
 	if (drvdata->brt_code_enable) {
 		index = brt_val / 10;
@@ -214,20 +171,21 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 
 		code = (code2 - code1) * remainder / 10 + code1;
 
-		brt_LSB = code & 0x7;
+		brt_LSB = code % 0x7;
 		brt_MSB = (code >> 3) & 0xFF;
 	} else {
-		brt_LSB = brt_val & 0x7;
+		brt_LSB = brt_val % 0x7;
 		brt_MSB = (brt_val >> 3) & 0xFF;
 	}
 
 	if (drvdata->bank_B) {
 		sm5350_write_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_LSB_REG, brt_LSB);
 		sm5350_write_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_MSB_REG, brt_MSB);
-	}else {
-		sm5350_write_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_LSB_REG, brt_LSB);
-		sm5350_write_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_MSB_REG, brt_MSB);
 	}
+
+	if (drvdata->enable == false)
+		sm5350_init_registers(drvdata);
+
 
 	drvdata->brightness = brt_val;
 
@@ -236,42 +194,21 @@ void sm5350_set_brightness(struct sm5350_data *drvdata, int brt_val)
 
 }
 
-static int sm5350_check_id(struct sm5350_data *drvdata)
-{
-	u8 value = 0;
-	int err = 0;
-	sm5350_read_reg(drvdata->client, 0x00, &value);
-	if (value != 0x00) {
-		pr_err("%s : ID check err\n", __func__);
-		err = -EINVAL;
-		return err;
-	}
-
-	return err;
-}
-
 static void dump_sm5350_regs(struct sm5350_data *drvdata)
 {
 	u8 brt_LSB = 0;
 	u8 brt_MSB = 0;
-	u8 boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current, sink_out_cfg;
+	u8 boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current;
 
-	sm5350_read_reg(drvdata->client, SM5350_HVLED_CURR_SINK_OUT_CFG_REG, &sink_out_cfg);
 	sm5350_read_reg(drvdata->client, SM5350_BOOST_CTL_REG, &boost_ctl);
 	sm5350_read_reg(drvdata->client, SM5350_PWM_CFG_REG, &pwm_cfg);
-	sm5350_read_reg(drvdata->client, SM5350_CTL_BANK_EN_REG, &ctl_bank_en);
-	if(drvdata->bank_B) {
-		sm5350_read_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, &full_scale_current);
-		sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_LSB_REG, &brt_LSB);
-		sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_MSB_REG, &brt_MSB);
-	}else {
-		sm5350_read_reg(drvdata->client, SM5350_CTL_A_FULL_SCALE_CURR_REG, &full_scale_current);
-		sm5350_read_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_LSB_REG, &brt_LSB);
-		sm5350_read_reg(drvdata->client, SM5350_CTL_A_BRIGHTNESS_MSB_REG, &brt_MSB);
-	}
+	sm5350_read_reg(drvdata->client, SM5350_CTL_B_BANK_EN_REG, &ctl_bank_en);
+	sm5350_read_reg(drvdata->client, SM5350_CTL_B_FULL_SCALE_CURR_REG, &full_scale_current);
+	sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_LSB_REG, &brt_LSB);
+	sm5350_read_reg(drvdata->client, SM5350_CTL_B_BRIGHTNESS_MSB_REG, &brt_MSB);
 
-	pr_err(">>-- boost_ctl(0x%x), pwm_cfg(0x%x), ctl_bank_en(0x%x), full_scale_current(0x%x), brt_LSB(0x%x), brt_MSB(0x%x), sink_out_cfg(0x%x).\n",
-		boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current, brt_LSB, brt_MSB, sink_out_cfg);
+	pr_err(">>-- boost_ctl(0x%x), pwm_cfg(0x%x), ctl_bank_en(0x%x), full_scale_current(0x%x), brt_LSB(0x%x), brt_MSB(0x%x).\n",
+		boost_ctl, pwm_cfg, ctl_bank_en, full_scale_current, brt_LSB, brt_MSB);
 }
 
 static void __sm5350_work(struct sm5350_data *led,
@@ -441,7 +378,6 @@ static int sm5350_probe(struct i2c_client *client,
 
 	drvdata->client = client;
 	drvdata->adapter = client->adapter;
-	client->addr = 0x36;
 	drvdata->addr = client->addr;
 	drvdata->brightness = LED_OFF;
 	drvdata->enable = true;
@@ -449,6 +385,9 @@ static int sm5350_probe(struct i2c_client *client,
 	drvdata->led_dev.name = SM5350_LED_DEV;
 	drvdata->led_dev.brightness_set = sm5350_brightness_set;
 	drvdata->led_dev.max_brightness = MAX_BRIGHTNESS;
+
+	mutex_init(&drvdata->lock);
+	INIT_WORK(&drvdata->work, sm5350_work);
 
 	err = sm5350_get_dt_data(&client->dev, drvdata);
 	if(err < 0) {
@@ -459,15 +398,6 @@ static int sm5350_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, drvdata);
 
-	err = sm5350_check_id(drvdata);
-	if (err < 0) {
-		pr_err("%s : ID idenfy failed\n", __func__);
-		goto err_init;
-	}
-
-	mutex_init(&drvdata->lock);
-	INIT_WORK(&drvdata->work, sm5350_work);
-
 	err = led_classdev_register(&client->dev, &drvdata->led_dev);
 	if (err < 0) {
 		pr_err("%s : Register led class failed\n", __func__);
@@ -476,13 +406,6 @@ static int sm5350_probe(struct i2c_client *client,
 	}
 	sm5350_init_registers(drvdata);
 	dump_sm5350_regs(drvdata);
-
-#if defined(CONFIG_FB)
-	drvdata->fb_notif.notifier_call = fb_notifier_callback;
-	err = fb_register_client(&drvdata->fb_notif);
-	if (err)
-		pr_err("%s : Unable to register fb_notifier: %d\n", __func__, err);
-#endif
 
 	return 0;
 
