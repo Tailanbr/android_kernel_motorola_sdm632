@@ -1,8 +1,8 @@
 /*
  * Copyright (C) 2010 - 2017 Novatek, Inc.
  *
- * $Revision: 15382 $
- * $Date: 2017-08-15 09:19:01 +0800 (周二, 15 八月 2017) $
+ * $Revision: 20251 $
+ * $Date: 2017-12-13 17:41:29 +0800 (Wed, 13 Dec 2017) $
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,12 +37,11 @@
 #define HANDSHAKING_HOST_READY 0xBB
 
 #define XDATA_SECTOR_SIZE   256
-#define XDATA_BUF_SIZE    2048
 
-static uint8_t xdata_tmp[XDATA_BUF_SIZE] = {0};
-static int32_t xdata[XDATA_BUF_SIZE] = {0};
-static int32_t xdata_i[XDATA_BUF_SIZE] = {0};
-static int32_t xdata_q[XDATA_BUF_SIZE] = {0};
+static uint8_t xdata_tmp[2048] = {0};
+static int32_t xdata[2048] = {0};
+static int32_t xdata_i[2048] = {0};
+static int32_t xdata_q[2048] = {0};
 
 static struct proc_dir_entry *NVT_proc_fw_version_entry;
 static struct proc_dir_entry *NVT_proc_baseline_entry;
@@ -60,13 +59,13 @@ void nvt_change_mode(uint8_t mode)
 {
 	uint8_t buf[8] = {0};
 
-	/*---set xdata index to EVENT BUF ADDR---*/
+	//---set xdata index to EVENT BUF ADDR---
 	buf[0] = 0xFF;
 	buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
 	buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-	/*---set mode---*/
+	//---set mode---
 	buf[0] = EVENT_MAP_HOST_CMD;
 	buf[1] = mode;
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 2);
@@ -90,111 +89,20 @@ uint8_t nvt_get_fw_pipe(void)
 {
 	uint8_t buf[8] = {0};
 
-	/*---set xdata index to EVENT BUF ADDR---*/
+	//---set xdata index to EVENT BUF ADDR---
 	buf[0] = 0xFF;
 	buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
 	buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-	/*---read fw status---*/
+	//---read fw status---
 	buf[0] = EVENT_MAP_HANDSHAKING_or_SUB_CMD_BYTE;
 	buf[1] = 0x00;
 	CTP_I2C_READ(ts->client, I2C_FW_Address, buf, 2);
 
-	/*NVT_LOG("FW pipe=%d, buf[1]=0x%02X\n", (buf[1]&0x01), buf[1]);*/
+	//NVT_LOG("FW pipe=%d, buf[1]=0x%02X\n", (buf[1]&0x01), buf[1]);
 
 	return (buf[1] & 0x01);
-}
-
-/*******************************************************
-Description:
-	Novatek touchscreen read mass data function.
-
-return:
-	n.a.
-*******************************************************/
-int32_t nvt_read_mass_data(uint8_t i2c_addr, uint8_t *temp_buf, uint32_t count)
-{
-	int32_t i = 0;
-	int32_t j = 0;
-	int32_t k = 0;
-	uint8_t i2c_buf[I2C_TANSFER_LENGTH + 1] = {0};
-	uint32_t xdata_addr = 0;
-	uint32_t head_addr = 0;
-	int32_t dummy_len = 0;
-	int32_t data_len = 0;
-	int32_t residual_len = 0;
-
-	/*---set xdata sector address & length---*/
-	xdata_addr = (temp_buf[3] << 24) + (temp_buf[4] << 16) + (temp_buf[5] << 8) + temp_buf[6];
-	head_addr = xdata_addr - (xdata_addr % XDATA_SECTOR_SIZE);
-	dummy_len = xdata_addr - head_addr;
-	data_len = (int32_t)((temp_buf[1] << 8) + temp_buf[2]);
-	residual_len = (head_addr + dummy_len + data_len) % XDATA_SECTOR_SIZE;
-
-	if (data_len > XDATA_BUF_SIZE)
-		return -EINVAL;
-
-	/*NVT_LOG("head_addr=0x%05X, dummy_len=0x%05X, data_len=0x%05X, residual_len=0x%05X\n", head_addr, dummy_len, data_len, residual_len);*/
-
-	/*read xdata : step 1*/
-	for (i = 0; i < ((dummy_len + data_len) / XDATA_SECTOR_SIZE); i++) {
-		/*---change xdata index---*/
-		i2c_buf[0] = 0xFF;
-		i2c_buf[1] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 16) & 0xFF;
-		i2c_buf[2] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 8) & 0xFF;
-		CTP_I2C_WRITE(ts->client, (uint16_t)i2c_addr, i2c_buf, 3);
-
-		/*---read xdata by I2C_TANSFER_LENGTH*/
-		for (j = 0; j < (XDATA_SECTOR_SIZE / I2C_TANSFER_LENGTH); j++) {
-			/*---read data---*/
-			i2c_buf[0] = I2C_TANSFER_LENGTH * j;
-			CTP_I2C_READ(ts->client, (uint16_t)i2c_addr, i2c_buf, I2C_TANSFER_LENGTH + 1);
-
-			/*---copy buf to xdata_tmp---*/
-			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
-				xdata_tmp[XDATA_SECTOR_SIZE * i + I2C_TANSFER_LENGTH * j + k] = i2c_buf[k + 1];
-				//NVT_LOG("0x%02X, 0x%04X\n", i2c_buf[k+1], (XDATA_SECTOR_SIZE*i + I2C_TANSFER_LENGTH*j + k));
-			}
-		}
-		/*NVT_LOG("addr=0x%05X\n", (head_addr+XDATA_SECTOR_SIZE*i));*/
-	}
-
-	/*read xdata : step2*/
-	if (residual_len != 0) {
-		/*---change xdata index---*/
-		i2c_buf[0] = 0xFF;
-		i2c_buf[1] = ((xdata_addr + data_len - residual_len) >> 16) & 0xFF;
-		i2c_buf[2] = ((xdata_addr + data_len - residual_len) >> 8) & 0xFF;
-		CTP_I2C_WRITE(ts->client, (uint16_t)i2c_addr, i2c_buf, 3);
-
-		/*---read xdata by I2C_TANSFER_LENGTH*/
-		for (j = 0; j < (residual_len / I2C_TANSFER_LENGTH + 1); j++) {
-			/*---read data---*/
-			i2c_buf[0] = I2C_TANSFER_LENGTH * j;
-			CTP_I2C_READ(ts->client, (uint16_t)i2c_addr, i2c_buf, I2C_TANSFER_LENGTH + 1);
-
-			/*---copy buf to xdata_tmp---*/
-			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
-				xdata_tmp[(dummy_len + data_len - residual_len) + I2C_TANSFER_LENGTH * j + k] = i2c_buf[k + 1];
-				/*printk("0x%02X, 0x%04x\n", buf[k+1], ((dummy_len+data_len-residual_len) + I2C_TANSFER_LENGTH*j + k));*/
-			}
-		}
-		/*printk("addr=0x%05X\n", (xdata_addr+data_len-residual_len));*/
-	}
-
-	/*---set xdata index to EVENT BUF ADDR---*/
-	i2c_buf[0] = 0xFF;
-	i2c_buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
-	i2c_buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
-	CTP_I2C_WRITE(ts->client, (uint16_t)i2c_addr, i2c_buf, 3);
-
-	/*---remove dummy data and copy to caller buffer---*/
-	for (i = 0; i < data_len; i++) {
-		*(temp_buf + i) = xdata_tmp[dummy_len + i];
-	}
-
-	return  data_len;
 }
 
 /*******************************************************
@@ -215,84 +123,84 @@ void nvt_read_mdata(uint32_t xdata_addr, uint32_t xdata_btn_addr)
 	int32_t data_len = 0;
 	int32_t residual_len = 0;
 
-	/*---set xdata sector address & length---*/
+	//---set xdata sector address & length---
 	head_addr = xdata_addr - (xdata_addr % XDATA_SECTOR_SIZE);
 	dummy_len = xdata_addr - head_addr;
 	data_len = ts->x_num * ts->y_num * 2;
 	residual_len = (head_addr + dummy_len + data_len) % XDATA_SECTOR_SIZE;
 
-	/*printk("head_addr=0x%05X, dummy_len=0x%05X, data_len=0x%05X, residual_len=0x%05X\n", head_addr, dummy_len, data_len, residual_len);*/
+	//printk("head_addr=0x%05X, dummy_len=0x%05X, data_len=0x%05X, residual_len=0x%05X\n", head_addr, dummy_len, data_len, residual_len);
 
-	/*read xdata : step 1*/
+	//read xdata : step 1
 	for (i = 0; i < ((dummy_len + data_len) / XDATA_SECTOR_SIZE); i++) {
-		/*---change xdata index---*/
+		//---change xdata index---
 		buf[0] = 0xFF;
 		buf[1] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 16) & 0xFF;
 		buf[2] = ((head_addr + XDATA_SECTOR_SIZE * i) >> 8) & 0xFF;
 		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-		/*---read xdata by I2C_TANSFER_LENGTH*/
+		//---read xdata by I2C_TANSFER_LENGTH
 		for (j = 0; j < (XDATA_SECTOR_SIZE / I2C_TANSFER_LENGTH); j++) {
-			/*---read data---*/
+			//---read data---
 			buf[0] = I2C_TANSFER_LENGTH * j;
 			CTP_I2C_READ(ts->client, I2C_FW_Address, buf, I2C_TANSFER_LENGTH + 1);
 
-			/*---copy buf to xdata_tmp---*/
+			//---copy buf to xdata_tmp---
 			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
 				xdata_tmp[XDATA_SECTOR_SIZE * i + I2C_TANSFER_LENGTH * j + k] = buf[k + 1];
-				/*printk("0x%02X, 0x%04X\n", buf[k+1], (XDATA_SECTOR_SIZE*i + I2C_TANSFER_LENGTH*j + k));*/
+				//printk("0x%02X, 0x%04X\n", buf[k+1], (XDATA_SECTOR_SIZE*i + I2C_TANSFER_LENGTH*j + k));
 			}
 		}
-		/*printk("addr=0x%05X\n", (head_addr+XDATA_SECTOR_SIZE*i));*/
+		//printk("addr=0x%05X\n", (head_addr+XDATA_SECTOR_SIZE*i));
 	}
 
-	/*read xdata : step2*/
+	//read xdata : step2
 	if (residual_len != 0) {
-		/*---change xdata index---*/
+		//---change xdata index---
 		buf[0] = 0xFF;
 		buf[1] = ((xdata_addr + data_len - residual_len) >> 16) & 0xFF;
 		buf[2] = ((xdata_addr + data_len - residual_len) >> 8) & 0xFF;
 		CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-		/*---read xdata by I2C_TANSFER_LENGTH*/
+		//---read xdata by I2C_TANSFER_LENGTH
 		for (j = 0; j < (residual_len / I2C_TANSFER_LENGTH + 1); j++) {
-			/*---read data---*/
+			//---read data---
 			buf[0] = I2C_TANSFER_LENGTH * j;
 			CTP_I2C_READ(ts->client, I2C_FW_Address, buf, I2C_TANSFER_LENGTH + 1);
 
-			/*---copy buf to xdata_tmp---*/
+			//---copy buf to xdata_tmp---
 			for (k = 0; k < I2C_TANSFER_LENGTH; k++) {
 				xdata_tmp[(dummy_len + data_len - residual_len) + I2C_TANSFER_LENGTH * j + k] = buf[k + 1];
-				/*printk("0x%02X, 0x%04x\n", buf[k+1], ((dummy_len+data_len-residual_len) + I2C_TANSFER_LENGTH*j + k));*/
+				//printk("0x%02X, 0x%04x\n", buf[k+1], ((dummy_len+data_len-residual_len) + I2C_TANSFER_LENGTH*j + k));
 			}
 		}
-		/*printk("addr=0x%05X\n", (xdata_addr+data_len-residual_len));*/
+		//printk("addr=0x%05X\n", (xdata_addr+data_len-residual_len));
 	}
 
-	/*---remove dummy data and 2bytes-to-1data---*/
+	//---remove dummy data and 2bytes-to-1data---
 	for (i = 0; i < (data_len / 2); i++) {
 		xdata[i] = (int16_t)(xdata_tmp[dummy_len + i * 2] + 256 * xdata_tmp[dummy_len + i * 2 + 1]);
 	}
 
 #if TOUCH_KEY_NUM > 0
-	/*read button xdata : step3*/
-	/*---change xdata index---*/
+	//read button xdata : step3
+	//---change xdata index---
 	buf[0] = 0xFF;
 	buf[1] = (xdata_btn_addr >> 16) & 0xFF;
 	buf[2] = ((xdata_btn_addr >> 8) & 0xFF);
 	CTP_I2C_WRITE(ts->client, I2C_FW_Address, buf, 3);
 
-	/*---read data---*/
+	//---read data---
 	buf[0] = (xdata_btn_addr & 0xFF);
 	CTP_I2C_READ(ts->client, I2C_FW_Address, buf, (TOUCH_KEY_NUM * 2 + 1));
 
-	/*---2bytes-to-1data---*/
+	//---2bytes-to-1data---
 	for (i = 0; i < TOUCH_KEY_NUM; i++) {
 		xdata[ts->x_num * ts->y_num + i] = (int16_t)(buf[1 + i * 2] + 256 * buf[1 + i * 2 + 1]);
 	}
 #endif
 
-	/*---set xdata index to EVENT BUF ADDR---*/
+	//---set xdata index to EVENT BUF ADDR---
 	buf[0] = 0xFF;
 	buf[1] = (ts->mmap->EVENT_BUF_ADDR >> 16) & 0xFF;
 	buf[2] = (ts->mmap->EVENT_BUF_ADDR >> 8) & 0xFF;
@@ -444,36 +352,6 @@ Description:
 return:
 	n.a.
 *******************************************************/
-static int32_t nvt_info_open(struct inode *inode, struct file *file)
-{
-	if (mutex_lock_interruptible(&ts->lock)) {
-		return -ERESTARTSYS;
-	}
-
-	NVT_LOG("++\n");
-#if NVT_TOUCH_ESD_PROTECT
-			nvt_esd_check_enable(false);
-#endif
-	if (nvt_get_fw_info()) {
-		mutex_unlock(&ts->lock);
-		return -EAGAIN;
-	}
-
-	mutex_unlock(&ts->lock);
-
-	NVT_LOG("--\n");
-
-	return seq_open(file, &nvt_fw_version_seq_ops);
-}
-
-static const struct file_operations nvt_info_proc_fops = {
-	.owner = THIS_MODULE,
-	.open = nvt_info_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = seq_release,
-};
-
 static int32_t nvt_fw_version_open(struct inode *inode, struct file *file)
 {
 	if (mutex_lock_interruptible(&ts->lock)) {
@@ -481,9 +359,11 @@ static int32_t nvt_fw_version_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
+
 #if NVT_TOUCH_ESD_PROTECT
-		nvt_esd_check_enable(false);
-#endif
+	nvt_esd_check_enable(false);
+#endif /* #if NVT_TOUCH_ESD_PROTECT */
+
 	if (nvt_get_fw_info()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
@@ -518,9 +398,11 @@ static int32_t nvt_baseline_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
+
 #if NVT_TOUCH_ESD_PROTECT
-			nvt_esd_check_enable(false);
-#endif
+	nvt_esd_check_enable(false);
+#endif /* #if NVT_TOUCH_ESD_PROTECT */
+
 	if (nvt_clear_fw_status()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
@@ -576,9 +458,11 @@ static int32_t nvt_raw_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
+
 #if NVT_TOUCH_ESD_PROTECT
-		nvt_esd_check_enable(false);
-#endif
+	nvt_esd_check_enable(false);
+#endif /* #if NVT_TOUCH_ESD_PROTECT */
+
 	if (nvt_clear_fw_status()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
@@ -641,9 +525,11 @@ static int32_t nvt_diff_open(struct inode *inode, struct file *file)
 	}
 
 	NVT_LOG("++\n");
+
 #if NVT_TOUCH_ESD_PROTECT
-		nvt_esd_check_enable(false);
-#endif
+	nvt_esd_check_enable(false);
+#endif /* #if NVT_TOUCH_ESD_PROTECT */
+
 	if (nvt_clear_fw_status()) {
 		mutex_unlock(&ts->lock);
 		return -EAGAIN;
@@ -735,32 +621,5 @@ int32_t nvt_extra_proc_init(void)
 	}
 
 	return 0;
-}
-
-void nvt_extra_proc_remove(void)
-{
-	if (NVT_proc_fw_version_entry != NULL) {
-		remove_proc_entry(NVT_FW_VERSION, NULL);
-		NVT_LOG("Removed %s under /proc\n",
-			  NVT_FW_VERSION);
-	}
-
-	if (NVT_proc_baseline_entry != NULL) {
-		remove_proc_entry(NVT_BASELINE, NULL);
-		NVT_LOG("Removed %s under /proc\n",
-			  NVT_BASELINE);
-	}
-
-	if (NVT_proc_raw_entry != NULL) {
-		remove_proc_entry(NVT_RAW, NULL);
-		NVT_LOG("Removed %s under /proc\n",
-			  NVT_RAW);
-	}
-
-	if (NVT_proc_diff_entry != NULL) {
-		remove_proc_entry(NVT_DIFF, NULL);
-		NVT_LOG("Removed %s under /proc\n",
-			  NVT_DIFF);
-	}
 }
 #endif
