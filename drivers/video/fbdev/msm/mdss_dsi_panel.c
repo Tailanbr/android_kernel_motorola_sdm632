@@ -663,11 +663,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			usleep_range(100, 110);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		if (!pinfo->panel_off_rst_disable) {
+		if (!pinfo->panel_off_rst_disable)
 			gpio_set_value((ctrl_pdata->rst_gpio), 0);
-			if(gpio_is_valid(ctrl_pdata->tp_rst_gpio))
-				gpio_set_value((ctrl_pdata->tp_rst_gpio), 0);
-		}
 		gpio_free(ctrl_pdata->rst_gpio);
 		if(gpio_is_valid(ctrl_pdata->tp_rst_gpio))
 			gpio_free(ctrl_pdata->tp_rst_gpio);
@@ -3351,10 +3348,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 					"qcom,mdss-dsi-lp11-init");
 	pinfo->panel_off_rst_disable = of_property_read_bool(np,
 					"qcom,mdss-panel-off-rst-disable");
-	pinfo->panel_reset_pull_high = of_property_read_bool(np,
-					"qcom,mdss-panel-reset-high");
-	pinfo->panel_reg_read_lp_enable = of_property_read_bool(np,
-					"qcom,mdss-panel-reg-read-lp-enable");
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-init-delay-us", &tmp);
 	pinfo->mipi.init_delay = (!rc ? tmp : 0);
 
