@@ -5888,6 +5888,8 @@ void mmi_init(struct smb_charger *chg)
 			   "IPC logging is enabled for charger\n");
 
 	mmi_chip = chg;
+	chg->voltage_min_uv = MICRO_5V;
+	chg->voltage_max_uv = MICRO_9V;
 	chg->mmi.factory_mode = mmi_factory_check();
 	chg->mmi.is_factory_image = false;
 	chg->mmi.charging_limit_modes = CHARGING_LIMIT_UNKNOWN;
