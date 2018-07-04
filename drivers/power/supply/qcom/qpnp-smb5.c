@@ -1529,8 +1529,10 @@ static int smb5_batt_set_prop(struct power_supply *psy,
 		break;
 #ifdef QCOM_BASE
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+#ifdef QCOM_BASE
 		chg->batt_profile_fv_uv = val->intval;
 		vote(chg->fv_votable, BATT_PROFILE_VOTER, true, val->intval);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_STEP_CHARGING_ENABLED:
 		enable = !!val->intval || chg->sw_jeita_enabled;
