@@ -4011,8 +4011,8 @@ irqreturn_t switcher_power_ok_irq_handler(int irq, void *data)
 	struct smb_charger *chg = irq_data->parent_data;
 	struct storm_watch *wdata = &irq_data->storm_data;
 	int pok_irq = chg->irq_info[SWITCHER_POWER_OK_IRQ].irq;
-	int rc, usb_icl;
-	u8 stat;
+	int rc;
+	u8 stat, susp;
 
 	if (!(chg->wa_flags & BOOST_BACK_WA))
 		return IRQ_HANDLED;
@@ -5102,11 +5102,17 @@ static void mmi_heartbeat_work(struct work_struct *work)
 			smblib_err(chip,
 				   "Reverse Boosted: Clear, USB Suspend\n");
 			chip->reverse_boost = false;
-			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
-			     true, 0);
+			if (chip->mmi.factory_mode)
+				smblib_set_usb_suspend(chip, true);
+			else
+				vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+				     true, 0);
 			msleep(50);
-			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
-			     false, 0);
+			if (chip->mmi.factory_mode)
+				smblib_set_usb_suspend(chip, false);
+			else
+				vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+				     false, 0);
 			enable_irq(pok_irq);
 		} else {
 			smblib_err(chip,
