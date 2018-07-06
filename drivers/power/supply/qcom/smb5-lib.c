@@ -1897,6 +1897,7 @@ static int smblib_dp_pulse(struct smb_charger *chg)
 	return rc;
 }
 
+#ifdef QCOM_BASE
 static int smblib_dm_pulse(struct smb_charger *chg)
 {
 	int rc;
@@ -1910,6 +1911,7 @@ static int smblib_dm_pulse(struct smb_charger *chg)
 
 	return rc;
 }
+#endif
 
 int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val)
 {
@@ -5271,11 +5273,13 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		    (usb_mv >= VBUS_INPUT_VOLTAGE_MIN) &&
 		    (mmi->vbus_inc_cnt < VBUS_INPUT_MAX_COUNT)) {
 			pr_warn("HVDCP Input %d mV Low, Increase\n", usb_mv);
-			smblib_write(chip, CMD_HVDCP_2_REG,
-				     SINGLE_INCREMENT_BIT);
+			smblib_dp_pulse(chip);
 			vbus_inc_now = true;
 			mmi->vbus_inc_cnt++;
 		} else if (usb_mv > VBUS_INPUT_VOLTAGE_MAX) {
+			smblib_dbg(chip, PR_MOTO,
+				   "HVDCP Input %d mV High force 5V\n",
+				   usb_mv);
 			vbus_inc_mv -= 50;
 			smblib_write(chip, CMD_HVDCP_2_REG,
 				     FORCE_5V_BIT);
@@ -6278,6 +6282,10 @@ void mmi_init(struct smb_charger *chg)
 			smblib_err(chg, "couldn't create force_chg_itrick\n");
 		}
 	}
+
+	/* reconfigure allowed voltage for HVDCP */
+	rc = smblib_set_adapter_allowance(chg,
+			USBIN_ADAPTER_ALLOW_5V_TO_9V);
 
 	/* Turn Jeita OFF */
 	rc = smblib_masked_write(chg, JEITA_EN_CFG_REG,
