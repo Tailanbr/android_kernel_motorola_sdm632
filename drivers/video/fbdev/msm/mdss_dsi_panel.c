@@ -663,8 +663,11 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			usleep_range(100, 110);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
-		if (!pinfo->panel_off_rst_disable)
+		if (!pinfo->panel_off_rst_disable) {
 			gpio_set_value((ctrl_pdata->rst_gpio), 0);
+			if(gpio_is_valid(ctrl_pdata->tp_rst_gpio))
+				gpio_set_value((ctrl_pdata->tp_rst_gpio), 0);
+		}
 		gpio_free(ctrl_pdata->rst_gpio);
 		if(gpio_is_valid(ctrl_pdata->tp_rst_gpio))
 			gpio_free(ctrl_pdata->tp_rst_gpio);
