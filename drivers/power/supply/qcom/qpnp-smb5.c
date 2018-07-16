@@ -495,9 +495,6 @@ static int smb5_parse_dt(struct smb5 *chip)
 	chg->dr_supported = of_property_read_bool(node,
 					"qcom,dr-supported");
 
-	chip->chg.mmi.mmi_hvdcp_disable = of_property_read_bool(node,
-								"qcom,mmi-disable-hvdcp");
-
 	chg->hw_die_temp_mitigation = of_property_read_bool(node,
 					"qcom,hw-die-temp-mitigation");
 
