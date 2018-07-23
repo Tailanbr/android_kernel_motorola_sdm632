@@ -363,6 +363,8 @@ static bool mdss_dsi_panel_hbm_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 *level)
 {
 	u32 bl_level;
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	int rc;
 
 	if (pdata == NULL || level == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -376,6 +378,27 @@ static bool mdss_dsi_panel_hbm_bl_ctrl(struct mdss_panel_data *pdata,
 	if (bl_level == BRIGHTNESS_HBM_ON || bl_level == BRIGHTNESS_HBM_OFF) {
 		if (pdata->panel_info.hbm_type == HBM_TYPE_OLED)
 			return true;
+		else if (pdata->panel_info.hbm_type == HBM_TYPE_LCD_DCS_GPIO) {
+			int enable = 0;
+
+			ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+						panel_data);
+
+			if (bl_level == BRIGHTNESS_HBM_ON) {
+				enable = 1;
+			} else {
+				enable = 0;
+			}
+			if (gpio_is_valid(ctrl_pdata->hbm_en_gpio)) {
+				rc = gpio_direction_output(
+					ctrl_pdata->hbm_en_gpio, enable);
+				if (rc) {
+					pr_err("%s: unable to set hbm gpio\n",
+						__func__);
+				}
+			}
+
+		}
 		*level = bl_level == BRIGHTNESS_HBM_ON ?
 			pdata->panel_info.bl_max : pdata->panel_info.bl_hbm_off;
 		return false;
@@ -673,6 +696,10 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			gpio_free(ctrl_pdata->tp_rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
+		if (gpio_is_valid(ctrl_pdata->hbm_en_gpio)) {
+			gpio_set_value((ctrl_pdata->hbm_en_gpio), 0);
+			gpio_free(ctrl_pdata->hbm_en_gpio);
+		}
 
 		rc = mdss_dsi_pinctrl_set_state(ctrl_pdata, false);
 		if (rc)
@@ -1572,6 +1599,8 @@ static int mdss_panel_parse_param_prop(struct device_node *np,
 				pinfo->hbm_type = HBM_TYPE_LCD_DCS_ONLY;
 			else if (data && !strcmp(data, "lcd-wled-only"))
 				pinfo->hbm_type = HBM_TYPE_LCD_WLED_ONLY;
+			else if (data && !strcmp(data, "lcd-dcs-gpio"))
+				pinfo->hbm_type = HBM_TYPE_LCD_DCS_GPIO;
 			else
 				pinfo->hbm_type = HBM_TYPE_OLED;
 		}
