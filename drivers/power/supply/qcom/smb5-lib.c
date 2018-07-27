@@ -3983,8 +3983,8 @@ irqreturn_t switcher_power_ok_irq_handler(int irq, void *data)
 	struct smb_charger *chg = irq_data->parent_data;
 	struct storm_watch *wdata = &irq_data->storm_data;
 	int pok_irq = chg->irq_info[SWITCHER_POWER_OK_IRQ].irq;
-	int rc;
-	u8 stat, susp;
+	int rc, usb_icl;
+	u8 stat;
 
 	if (!(chg->wa_flags & BOOST_BACK_WA))
 		return IRQ_HANDLED;
@@ -4914,6 +4914,9 @@ void update_charging_limit_modes(struct smb_charger *chip, int batt_soc)
 #define VBUS_INPUT_MAX_COUNT 4
 #define WARM_TEMP 45
 #define COOL_TEMP 0
+#define REV_BST_THRESH 4700
+#define REV_BST_DROP 150
+#define REV_BST_MA -10
 static void mmi_heartbeat_work(struct work_struct *work)
 {
 	struct smb_charger *chip = container_of(work,
@@ -4943,6 +4946,8 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	int target_usb = -EINVAL;
 	int target_fcc = -EINVAL;
 	int target_fv = -EINVAL;
+	int pok_irq;
+	static int prev_vbus_mv = -1;
 
 	if (!atomic_read(&chip->mmi.hb_ready))
 		return;
@@ -5010,8 +5015,34 @@ static void mmi_heartbeat_work(struct work_struct *work)
 	} else
 		usb_mv = val.intval / 1000;
 
+	if (prev_vbus_mv == -1)
+		prev_vbus_mv = usb_mv;
+
 	smblib_dbg(chip, PR_MISC, "batt=%d mV, %d mA, %d C, USB= %d mV\n",
 		batt_mv, batt_ma, batt_temp, usb_mv);
+
+	pok_irq = chip->irq_info[SWITCHER_POWER_OK_IRQ].irq;
+	if (chip->reverse_boost) {
+		if (((usb_mv < REV_BST_THRESH) &&
+		    ((prev_vbus_mv - REV_BST_DROP) > usb_mv)) ||
+		    (batt_ma > REV_BST_MA)) {
+			smblib_err(chip,
+				   "Reverse Boosted: Clear, USB Suspend\n");
+			chip->reverse_boost = false;
+			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+			     true, 0);
+			msleep(50);
+			vote(chip->usb_icl_votable, BOOST_BACK_VOTER,
+			     false, 0);
+			enable_irq(pok_irq);
+		} else {
+			smblib_err(chip,
+				   "Reverse Boosted: USB %d mV PUSB %d mV\n",
+				   usb_mv, prev_vbus_mv);
+		}
+	}
+
+	prev_vbus_mv = usb_mv;
 
 	if (charger_present) {
 		val.intval = get_client_vote(chip->usb_icl_votable,
