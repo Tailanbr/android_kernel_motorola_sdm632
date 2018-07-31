@@ -3849,6 +3849,24 @@ irqreturn_t typec_state_change_irq_handler(int irq, void *data)
 #endif
 
 	chg->typec_mode = typec_mode;
+
+	if (typec_chg) {
+		icl_vote_ma = get_client_vote(chg->usb_icl_votable,
+					      HEARTBEAT_VOTER) / 1000;
+		if ((typec_mode == POWER_SUPPLY_TYPEC_SOURCE_MEDIUM) &&
+		    (icl_vote_ma > 1500))
+			vote(chg->usb_icl_votable, HEARTBEAT_VOTER,
+			     true, 1500000);
+		else if ((typec_mode ==  POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) &&
+			 (icl_vote_ma > 500))
+			vote(chg->usb_icl_votable, HEARTBEAT_VOTER,
+			     true, 500000);
+		vote(chg->awake_votable, HEARTBEAT_VOTER, true, true);
+		cancel_delayed_work(&chg->mmi.heartbeat_work);
+		schedule_delayed_work(&chg->mmi.heartbeat_work,
+				      msecs_to_jiffies(0));
+	}
+
 	if (chg->dr_inst)
 		dual_role_instance_changed(chg->dr_inst);
 
