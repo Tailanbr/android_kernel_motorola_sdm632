@@ -5216,6 +5216,12 @@ static void mmi_heartbeat_work(struct work_struct *work)
 		else if (mmi_has_current_tapered(chip, batt_ma,
 						 zone->fcc_norm_ma)) {
 			mmi->chrg_taper_cnt = 0;
+			if (smblib_charge_halted(chip)) {
+				vote(chip->chg_disable_votable,
+				     HEARTBEAT_VOTER, true, 0);
+				smblib_err(chip, "Charge Halt..Toggle\n");
+				msleep(50);
+			}
 			mmi->pres_chrg_step = STEP_NORM;
 		}
 	} else if (mmi->pres_chrg_step == STEP_NORM) {
