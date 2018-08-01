@@ -1578,6 +1578,9 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 	if (chg->mmi.pres_chrg_step == STEP_FULL)
 		val->intval = POWER_SUPPLY_STATUS_FULL;
 
+	if (chg->mmi.pres_chrg_step == STEP_FULL)
+		val->intval = POWER_SUPPLY_STATUS_FULL;
+
 	if (val->intval != POWER_SUPPLY_STATUS_CHARGING)
 		return 0;
 
@@ -1599,9 +1602,6 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 
 	if (!stat)
 		val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
-
-	if (chg->mmi.pres_chrg_step == STEP_FULL)
-		val->intval = POWER_SUPPLY_STATUS_FULL;
 
 	return 0;
 }
