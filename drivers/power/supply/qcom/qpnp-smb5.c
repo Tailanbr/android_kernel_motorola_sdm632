@@ -634,11 +634,7 @@ static enum power_supply_property smb5_usb_props[] = {
 };
 
 #define SDP_CURRENT_UA			500000
-#ifdef CONFIG_DCP_2A_SUPPORT
-#define DCP_CURRENT_UA			1800000
-#else
 #define DCP_CURRENT_UA			1500000
-#endif
 
 static int smb5_usb_get_prop(struct power_supply *psy,
 		enum power_supply_property psp,
@@ -681,8 +677,6 @@ static int smb5_usb_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_input_current_settled(chg, val);
 		switch (chg->real_charger_type) {
 		case POWER_SUPPLY_TYPE_USB_CDP:
-			val->intval = max(CDP_CURRENT_UA, val->intval);
-			break;
 		case POWER_SUPPLY_TYPE_USB_DCP:
 			val->intval = max(DCP_CURRENT_UA, val->intval);
 			break;
