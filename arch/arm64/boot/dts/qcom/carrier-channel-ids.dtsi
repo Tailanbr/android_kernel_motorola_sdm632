@@ -121,8 +121,8 @@
 		"altice",	/* 104 */
 		"vipeu",	/* 105 */
 		"veoneu",	/* 106 */
-		"openeu",	/* 107 */
-		"reteu2",	/* 108 */
+		"undefined",	/* 107 */
+		"undefined",	/* 108 */
 		"undefined",	/* 109 */
 		"undefined",	/* 110 */
 		"undefined",	/* 111 */
@@ -150,7 +150,7 @@
 		"tmo",		/* 133 */
 		"sprint",	/* 134 */
 		"repw",		/* 135 */
-		"attpre",	/* 136 */
+		"aio",		/* 136 */
 		"cricket",	/* 137 */
 		"cc",		/* 138 */
 		"usc",		/* 139 */
@@ -166,7 +166,7 @@
 		"lra",		/* 149 */
 		"comcast",	/* 150 */
 		"fi",		/* 151 */
-		"vzwpre",	/* 152 */
+		"undefined",	/* 152 */
 		"undefined",	/* 153 */
 		"undefined",	/* 154 */
 		"undefined",	/* 155 */
