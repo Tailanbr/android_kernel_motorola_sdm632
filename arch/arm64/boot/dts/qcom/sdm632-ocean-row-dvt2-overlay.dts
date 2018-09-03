@@ -35,23 +35,51 @@
         status = "ok";
 };
 
-&pm8953_l6 {
-	regulator-always-on;
-	regulator-boot-on;
-};
-
 &mdss_dsi0 {
-	vddio-supply = <&pm8953_l6>;
+	tp-vddio-supply = <&pm8953_l6>;
 };
 
 &mot_ofilm_622_720p_vid_v0 {
-	qcom,mdss-panel-off-rst-disable;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@4 {
+			reg = <1>;
+			qcom,supply-name = "tp-vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <3>;
+			qcom,supply-pre-off-sleep = <5>;
+		};
+	};
 };
 
 &mot_tianma_622_720p_vid_v0 {
-	qcom,mdss-panel-off-rst-disable;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@4 {
+			reg = <1>;
+			qcom,supply-name = "tp-vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <3>;
+			qcom,supply-pre-off-sleep = <5>;
+		};
+	};
 };
 
 &mot_csot_622_720p_vid_v0 {
-	qcom,mdss-panel-off-rst-disable;
+	qcom,panel-supply-entries {
+		qcom,panel-supply-entry@4 {
+			reg = <1>;
+			qcom,supply-name = "tp-vddio";
+			qcom,supply-min-voltage = <1800000>;
+			qcom,supply-max-voltage = <1800000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <3>;
+			qcom,supply-pre-off-sleep = <5>;
+		};
+	};
 };
