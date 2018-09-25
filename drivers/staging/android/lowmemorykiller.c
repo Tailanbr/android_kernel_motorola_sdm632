@@ -768,6 +768,68 @@ static struct task_struct *pick_next_from_adj_tree(struct task_struct *task)
 	return next_tsk_sig->curr_target->group_leader;
 }
 
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+DEFINE_SPINLOCK(lmk_lock);
+struct rb_root tasks_scoreadj = RB_ROOT;
+/*
+ * Makesure to invoke the function with holding sighand->siglock
+ */
+void add_2_adj_tree(struct task_struct *task)
+{
+	struct rb_node **link;
+	struct rb_node *parent = NULL;
+	struct signal_struct *sig_entry;
+	s64 key = task->signal->oom_score_adj;
+
+	/*
+	 * Find the right place in the rbtree:
+	 */
+	spin_lock(&lmk_lock);
+	link =  &tasks_scoreadj.rb_node;
+	while (*link) {
+		parent = *link;
+		sig_entry = rb_entry(parent, struct signal_struct, adj_node);
+
+		if (key < sig_entry->oom_score_adj)
+			link = &parent->rb_right;
+		else
+			link = &parent->rb_left;
+	}
+
+	rb_link_node(&task->signal->adj_node, parent, link);
+	rb_insert_color(&task->signal->adj_node, &tasks_scoreadj);
+	spin_unlock(&lmk_lock);
+}
+
+/*
+ * Makesure to invoke the function with holding sighand->siglock
+ */
+void delete_from_adj_tree(struct task_struct *task)
+{
+	spin_lock(&lmk_lock);
+	if (!RB_EMPTY_NODE(&task->signal->adj_node)) {
+		rb_erase(&task->signal->adj_node, &tasks_scoreadj);
+		RB_CLEAR_NODE(&task->signal->adj_node);
+	}
+	spin_unlock(&lmk_lock);
+}
+
+static struct task_struct *pick_next_from_adj_tree(struct task_struct *task)
+{
+	struct rb_node *next;
+	struct signal_struct *next_tsk_sig;
+
+	spin_lock(&lmk_lock);
+	next = rb_next(&task->signal->adj_node);
+	spin_unlock(&lmk_lock);
+
+	if (!next)
+		return NULL;
+
+	next_tsk_sig = rb_entry(next, struct signal_struct, adj_node);
+	return next_tsk_sig->curr_target->group_leader;
+}
+
 static struct task_struct *pick_first_task(void)
 {
 	struct rb_node *left;
