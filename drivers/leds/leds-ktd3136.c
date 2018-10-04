@@ -17,10 +17,6 @@
 #include <linux/module.h>
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
-#if defined(CONFIG_FB)
-#include <linux/notifier.h>
-#include <linux/fb.h>
-#endif
 
 
 
@@ -85,9 +81,6 @@ struct ktd3136_data {
 	struct mutex		lock;
 	struct work_struct	work;
 	enum led_brightness brightness;
-#ifdef CONFIG_FB
-	struct notifier_block fb_notif;
-#endif
 	bool enable;
 	u8 pwm_cfg;
 	u8 boost_ctl;
@@ -188,16 +181,14 @@ static int ktd3136_write_reg(struct i2c_client *client, u8 addr, const u8 val)
 }
 static void ktd3136_hwen_pin_ctrl(struct ktd3136_data *drvdata, int en)
 {
-	if (gpio_is_valid(drvdata->hwen_gpio)) {
-		if (en) {
-			pr_debug("hwen pin is going to be high!---<%d>\n", en);
-			gpio_set_value(drvdata->hwen_gpio, true);
-		} else {
-			pr_debug("hwen pin is going to be low!---<%d>\n", en);
-			gpio_set_value(drvdata->hwen_gpio, false);
-		}
-		msleep(1);
+	if (en) {
+		pr_debug("hwen pin is going to be high!---<%d>\n", en);
+		gpio_set_value(drvdata->hwen_gpio, true);
+	} else {
+		pr_debug("hwen pin is going to be low!---<%d>\n", en);
+		gpio_set_value(drvdata->hwen_gpio, false);
 	}
+	msleep(1);
 }
 
 
@@ -360,10 +351,10 @@ static int ktd3136_backlight_init(struct ktd3136_data *drvdata)
 	u8 value;
 	u8 update_value;
 	update_value = (drvdata->ovp_level == 32) ? 0x20 : 0x00;
-	(drvdata->induct_current == 2600) ? update_value |=0x0E : update_value;
+	(drvdata->induct_current == 2600) ? update_value |=0x08 : update_value;
 	(drvdata->frequency == 1000) ? update_value |=0x40: update_value;
 
-	ktd3136_write_reg(drvdata->client, REG_CONTROL, update_value);
+	ktd3136_write_reg(drvdata->client, REG_CONTROL, update_value | 0x06); /* Linear default*/
 	ktd3136_bl_enable_channel(drvdata);
 		if (drvdata->pwm_mode) {
 			ktd3136_pwm_mode_enable(drvdata, true);
@@ -373,28 +364,13 @@ static int ktd3136_backlight_init(struct ktd3136_data *drvdata)
 	ktd3136_ramp_setting(drvdata);
 	ktd3136_transition_ramp(drvdata);
 	ktd3136_read_reg(drvdata->client, REG_CONTROL, &value);
+	ktd3136_masked_write(drvdata->client, REG_MODE, 0xf8, drvdata->full_scale_led);
 	pr_debug("read control register -before--<0x%x> -after--<0x%x> \n",
 					update_value, value);
-
-	return err;
-}
-
-static int ktd3136_backlight_enable(struct ktd3136_data *drvdata)
-{
-	int err = 0;
-	ktd3136_masked_write(drvdata->client, REG_MODE, 0xf8, drvdata->full_scale_led);
 	drvdata->enable = true;
 
 	return err;
 }
-
-static int ktd3136_backlight_reset(struct ktd3136_data *drvdata)
-{
-	int err = 0;
-	ktd3136_masked_write(drvdata->client, REG_SW_RESET, 0x01, 0x01);
-	return err;
-}
-
 static int ktd3136_check_id(struct ktd3136_data *drvdata)
 {
 	u8 value=0;
@@ -417,43 +393,17 @@ static void ktd3136_check_status(struct ktd3136_data *drvdata)
 		pr_err("status bit has been change! <%x>", value);
 
 		if (value & RESET_CONDITION_BITS) {
-			ktd3136_backlight_reset(drvdata);
+			ktd3136_hwen_pin_ctrl(drvdata, 0);
+			ktd3136_hwen_pin_ctrl(drvdata, 1);
 			ktd3136_backlight_init(drvdata);
-			ktd3136_backlight_enable(drvdata);
 		}
 
 	}
 	return ;
 }
 
-#if defined(CONFIG_FB)
-static int fb_notifier_callback(struct notifier_block *self,
-				       unsigned long event, void *data)
-{
-	int *blank;
-	struct fb_event *evdata = data;
-	struct ktd3136_data *drvdata =
-		container_of(self, struct ktd3136_data, fb_notif);
-
-	/*
-	 *  FB_EVENT_BLANK(0x09): A hardware display blank change occurred.
-	 *  FB_EARLY_EVENT_BLANK(0x10): A hardware display blank early change
-	 * occurred.
-	 */
-	if (evdata && evdata->data && (event == FB_EARLY_EVENT_BLANK)) {
-		blank = evdata->data;
-		if (*blank == FB_BLANK_POWERDOWN)
-			drvdata->enable = false;
-	}
-
-	return NOTIFY_OK;
-}
-#endif
-
 void ktd3136_set_brightness(struct ktd3136_data *drvdata, int brt_val)
 {
-	if (drvdata->enable == false)
-		ktd3136_backlight_init(drvdata);
 
 	pr_debug("brt_val is %d \n", brt_val);
 	if (brt_val>0) {
@@ -462,15 +412,16 @@ void ktd3136_set_brightness(struct ktd3136_data *drvdata, int brt_val)
 		ktd3136_masked_write(drvdata->client, REG_MODE, 0x01, 0x00); //disable bl mode
 	}
 	if (drvdata->using_lsb) {
-		ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, brt_val);
-		ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, brt_val>>3);
-	} else {
-		ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, ktd3136_brightness_table_reg4[brt_val]);
-		ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, ktd3136_brightness_table_reg5[brt_val]);
-	}
+			ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, brt_val);
+			ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, brt_val>>3);
+		} else {
+			ktd3136_masked_write(drvdata->client, REG_RATIO_LSB, 0x07, ktd3136_brightness_table_reg4[brt_val]);
+			ktd3136_masked_write(drvdata->client, REG_RATIO_MSB, 0xff, ktd3136_brightness_table_reg5[brt_val]);
+		}
 
 	if (drvdata->enable == false)
-		ktd3136_backlight_enable(drvdata);
+		ktd3136_backlight_init(drvdata);
+
 
 	drvdata->brightness = brt_val;
 
@@ -659,6 +610,8 @@ static int ktd3136_probe(struct i2c_client *client,
 	drvdata->led_dev.name = KTD3136_LED_DEV;
 	drvdata->led_dev.brightness_set = ktd3136_brightness_set;
 	drvdata->led_dev.max_brightness = MAX_BRIGHTNESS;
+	mutex_init(&drvdata->lock);
+	INIT_WORK(&drvdata->work, ktd3136_work);
 	ktd3136_get_dt_data(&client->dev, drvdata);
 	i2c_set_clientdata(client, drvdata);
 	err =ktd3136_check_id(drvdata);
@@ -666,9 +619,6 @@ static int ktd3136_probe(struct i2c_client *client,
 		pr_err("%s : ID idenfy failed\n", __func__);
 		goto err_init;
 	}
-
-	mutex_init(&drvdata->lock);
-	INIT_WORK(&drvdata->work, ktd3136_work);
 	err = led_classdev_register(&client->dev, &drvdata->led_dev);
 	if (err < 0) {
 		pr_err("%s : Register led class failed\n", __func__);
@@ -680,15 +630,7 @@ static int ktd3136_probe(struct i2c_client *client,
 	}
 	ktd3136_gpio_init(drvdata);
 	ktd3136_backlight_init(drvdata);
-	ktd3136_backlight_enable(drvdata);
 	ktd3136_check_status(drvdata);
-
-#if defined(CONFIG_FB)
-	drvdata->fb_notif.notifier_call = fb_notifier_callback;
-	err = fb_register_client(&drvdata->fb_notif);
-	if (err)
-		pr_err("%s : Unable to register fb_notifier: %d\n", __func__, err);
-#endif
 
 	return 0;
 
