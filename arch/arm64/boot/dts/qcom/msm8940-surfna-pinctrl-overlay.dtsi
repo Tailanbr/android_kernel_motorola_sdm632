@@ -10,23 +10,22 @@
  * GNU General Public License for more details.
  */
 
-&tlmm {
-	abov_int_pin {
-		/* qcom,pins = <&gp 44>;*/
-		pins = "gpio44";
-		qcom,num-grp-pins = <1>;
-		qcom,pin-func = <0>;
-		label = "abov_int_pin";
-		abov_int_default: int_default {
-			drive-strength = <2>;
-			bias-pull-up;
-		};
-		abov_int_sleep: int_sleep {
-			drive-strength = <2>;
-			bias-pull-up;
+&tlmm{
+	sx9310:sx9310 {
+		sx9310_int_default: default {
+			mux {
+				pins = "gpio44";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio44";
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
 		};
 	};
-
 	spi7 {
 		/* BLSP7 MOSI, MISO, CLK */
 		spi_7_active: spi_7_active {
@@ -68,6 +67,30 @@
 		};
 	};
 
+	quin-mi2s-lines {
+		quin_mi2s_act: quin_mi2s_act {
+			mux {
+				pins = "gpio85", "gpio86", "gpio88";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio85", "gpio86", "gpio88";
+				drive-strength = <8>;
+			};
+		};
+		quin_mi2s_sus: quin_mi2s_sus {
+			mux {
+				pins = "gpio85", "gpio86", "gpio88";
+				function = "pri_mi2s";
+			};
+			config {
+				pins = "gpio85", "gpio86", "gpio88";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
 	tps61280_en_default: tps61280_en_default {
 		mux {
 			pins = "gpio96";
@@ -78,29 +101,21 @@
 			output-high;
 		};
 	};
-};
 
-&pri_tlmm_lines_act {
-	mux {
-		pins = "gpio85", "gpio88", "gpio86";
-		function = "pri_mi2s";
-	};
+    i2c_3 {
+			i2c_3_active: i2c_3_active {
+				/* active state */
+				mux {
+					pins = "gpio10", "gpio11";
+					function = "blsp_i2c3";
+				};
 
-	config {
-		pins = "gpio85", "gpio88", "gpio86";
-		drive-strength = <8>;
-	};
-};
-
-&pri_tlmm_lines_sus {
-	mux {
-		pins = "gpio85", "gpio88", "gpio86";
-		function = "pri_mi2s";
-	};
-
-	config {
-		pins = "gpio85", "gpio88", "gpio86";
-		drive-strength = <2>;
-		bias-pull-down;
+				config {
+					pins = "gpio10", "gpio11";
+					/* update drive-strength from 2 to 16 */
+					drive-strength = <16>;
+					bias-disable;
+				};
+			};
 	};
 };
