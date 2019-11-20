@@ -483,6 +483,11 @@ static int fifo_read(struct edge_info *einfo, void *_data, int len)
 	uint32_t fifo_size = einfo->rx_fifo_size;
 	uint32_t n;
 
+	if (read_index >= fifo_size || write_index >= fifo_size) {
+		WARN_ON_ONCE(1);
+		return -EINVAL;
+	}
+
 	while (len) {
 		ptr = einfo->rx_fifo + read_index;
 		if (read_index <= write_index)
@@ -528,6 +533,11 @@ static int fifo_write_body(struct edge_info *einfo, const void *_data,
 	uint32_t read_index = einfo->tx_ch_desc->read_index;
 	uint32_t fifo_size = einfo->tx_fifo_size;
 	uint32_t n;
+
+	if (read_index >= fifo_size || *write_index >= fifo_size) {
+		WARN_ON_ONCE(1);
+		return -EINVAL;
+	}
 
 	while (len) {
 		ptr = einfo->tx_fifo + *write_index;
