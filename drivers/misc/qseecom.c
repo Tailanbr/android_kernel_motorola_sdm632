@@ -395,6 +395,32 @@ static int get_qseecom_keymaster_status(char *str)
 }
 __setup("androidboot.keymaster=", get_qseecom_keymaster_status);
 
+
+#define QSEECOM_SCM_EBUSY_WAIT_MS 30
+#define QSEECOM_SCM_EBUSY_MAX_RETRY 67
+
+static int __qseecom_scm_call2_locked(uint32_t smc_id, struct scm_desc *desc)
+{
+	int ret = 0;
+	int retry_count = 0;
+
+	if (qseecom.support_bus_scaling)
+		return scm_call2(smc_id, desc);
+
+	do {
+		ret = scm_call2_noretry(smc_id, desc);
+		if (ret == -EBUSY) {
+			mutex_unlock(&app_access_lock);
+			msleep(QSEECOM_SCM_EBUSY_WAIT_MS);
+			mutex_lock(&app_access_lock);
+		}
+		if (retry_count == 33)
+			pr_warn("secure world has been busy for 1 second!\n");
+	} while (ret == -EBUSY &&
+			(retry_count++ < QSEECOM_SCM_EBUSY_MAX_RETRY));
+	return ret;
+}
+
 static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			const void *req_buf, void *resp_buf)
 {
